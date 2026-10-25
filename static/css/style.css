@@ -567,3 +567,17 @@ section[id] { scroll-margin-top: 24px; }
 .env svg { width: 15px; height: 15px; flex: none; }
 .env-sim  { color: #5b4bc4; background: #f1effc; border: 1px solid #ddd8f6; }
 .env-real { color: #fff; background: var(--accent); border: 1px solid var(--accent); }
+
+/* hover feel on downstream-policy cards (lift + soft shadow) and task frames (pop out) */
+.rank-card { transition: transform .28s cubic-bezier(.2,.7,.2,1), box-shadow .28s ease, border-color .28s ease; }
+.rc-flow img { position: relative; transition: transform .28s cubic-bezier(.2,.7,.2,1), box-shadow .28s ease, filter .28s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .rank-card:hover { transform: translateY(-4px); border-color: #c9daf6; box-shadow: 0 22px 48px rgba(29, 29, 31, .10); }
+  .rank-card:hover .rc-flow img { filter: saturate(1.06); }
+  .rc-flow img:hover { z-index: 2; transform: scale(1.18); filter: saturate(1.12);
+                       box-shadow: 0 12px 26px rgba(29, 29, 31, .22); cursor: zoom-in; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-card, .rc-flow img { transition: none; }
+  .rank-card:hover, .rc-flow img:hover { transform: none; }
+}
