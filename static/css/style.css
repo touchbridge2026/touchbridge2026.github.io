@@ -587,3 +587,10 @@ section[id] { scroll-margin-top: 24px; }
   .rank-card, .rc-flow img { transition: none; }
   .rank-card:hover, .rc-flow img:hover { transform: none; }
 }
+
+/* TouchBridge wordmark colours, sampled from the teaser logo */
+.t-touch, .t-bridge { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.t-touch  { color: #f0702a; background-image: linear-gradient(180deg, #fb8d33 0%, #f6782b 55%, #e2591d 100%); }
+.t-bridge { color: #0b5aa6; background-image: linear-gradient(90deg, #08458e 0%, #0a59a8 45%, #1f74c6 100%); }
+.title .t-touch, .title .t-bridge { padding-bottom: .06em; }   /* keep descenders (g) inside the gradient */
+.topbar .brand:hover .t-touch, .topbar .brand:hover .t-bridge { filter: brightness(1.08); }

@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=31">
+  <link rel="stylesheet" href="static/css/style.css?v=32">
 </head>
 <body>
 
@@ -24,7 +24,8 @@
   <div class="hero-inner">
     <!-- 会议/状态标签，不需要可以整行删掉 -->
 
-    <h1 class="title">TouchBridge</h1>
+    <!-- 标题配色与 teaser 图标一致：Touch 橙色渐变，Bridge 蓝色渐变（颜色在 style.css 的 .t-touch / .t-bridge） -->
+    <h1 class="title"><span class="t-touch">Touch</span><span class="t-bridge">Bridge</span></h1>
     <p class="subtitle">Tactile-Conditioned Human-to-Robot Transfer for Dexterous Manipulation</p>
 
     <!-- 作者：把 href="#" 换成个人主页链接即可 -->
@@ -104,7 +105,7 @@
 
 <!-- 顶部导航栏：滚动时高亮当前章节。新增章节时在 <nav> 里加一行 <a href="#章节id">名字</a> -->
 <div class="topbar" id="topbar">
-  <a class="brand" href="#top">TouchBridge</a>
+  <a class="brand" href="#top"><span class="t-touch">Touch</span><span class="t-bridge">Bridge</span></a>
   <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="toc">Menu <span class="cur"></span></button>
   <nav class="toc" id="toc" aria-label="Sections">
     <a href="#overview">Overview</a>
