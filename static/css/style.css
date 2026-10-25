@@ -213,17 +213,6 @@ pre.bib {
 /* footer */
 footer { border-top: 1px solid var(--line); padding: 36px 24px 60px; text-align: center; font-family: var(--sans); font-size: 13px; color: var(--faint); }
 
-/* side table of contents (only on wide screens) */
-.toc {
-  position: fixed; top: 50%; left: 32px; transform: translateY(-50%);
-  font-family: var(--sans); font-size: 13px; line-height: 2.1;
-  opacity: 0; pointer-events: none; transition: opacity .3s;
-}
-.toc.show { opacity: 1; pointer-events: auto; }
-.toc a { display: block; color: var(--faint); }
-.toc a.active { color: var(--text); font-weight: 600; }
-.toc a:hover { color: var(--text); text-decoration: none; }
-@media (max-width: 1199px) { .toc { display: none; } }
 
 /* mobile */
 @media (max-width: 760px) {
@@ -299,29 +288,6 @@ section .data-badge { margin: 0 0 20px; font-size: 13.5px; gap: 8px; padding: 6p
 section .data-badge .tag { font-size: 11.5px; padding: 4px 10px; }
 section .data-badge + p { margin-top: 0; }
 
-/* ---------- side table of contents: larger and more visible ---------- */
-.toc {
-  left: max(20px, calc((100vw - var(--wide)) / 2 - 160px));
-  font-size: 15px; line-height: 1.3;
-  flex-direction: column; gap: 2px;
-  padding: 14px 0;
-}
-.toc::before {
-  content: "Contents";
-  font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--muted); padding: 0 0 10px 16px;
-}
-.toc a {
-  display: block; padding: 8px 16px 8px 14px;
-  color: var(--muted); font-weight: 500;
-  border-left: 2px solid var(--line);
-  border-radius: 0 6px 6px 0;
-  transition: color .15s, border-color .15s, background .15s;
-}
-.toc a:hover { color: var(--text); border-left-color: #b8b8be; background: var(--bg-soft); text-decoration: none; }
-.toc a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: #f3f7fe; }
-@media (min-width: 1200px) { .toc { display: flex; } }
-@media (max-width: 1199px) { .toc { display: none !important; } }
 
 /* ---------- flowchart videos: human demo -> retarget & render -> real-robot replay ---------- */
 .flow-head, .flow-row {
@@ -445,7 +411,7 @@ h4.mini {
 .rc-title { font-family: var(--serif); font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
 .rank-card.main .rc-title { font-size: 1.7rem; }
 .rc-delta { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
-.rc-row { display: grid; grid-template-columns: minmax(0, 168px) minmax(0, 1fr) 72px; align-items: center; gap: 14px; padding: 6px 0; }
+.rc-row { display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 1fr) 86px; align-items: center; gap: 14px; padding: 6px 0; }
 .rank-card.main .rc-row { grid-template-columns: minmax(0, 210px) minmax(0, 1fr) 92px; }
 .rc-label { font-size: 13.5px; color: #3a3a3c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-track { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
@@ -539,3 +505,65 @@ h4.mini {
 }
 .tac-scale { font-weight: 400; color: var(--muted); font-size: 12.5px; }
 .zoom-hint { text-align: left; }
+
+/* task flowchart inside each downstream-policy card; cards stacked full width */
+.rc-flow { display: grid; grid-template-columns: minmax(0,1fr) 14px minmax(0,1fr) 14px minmax(0,1fr) 14px minmax(0,1fr);
+           align-items: center; margin: 0 0 10px; }
+.rc-flow img { width: 100%; aspect-ratio: 197 / 129; object-fit: cover; border-radius: 4px; display: block; background: var(--bg-soft); }
+.rc-arrow { display: flex; justify-content: center; color: var(--accent); }
+.rc-arrow svg { width: 11px; height: 11px; }
+@media (max-width: 760px) {
+  .rc-flow { grid-template-columns: minmax(0,1fr) 12px minmax(0,1fr) 12px minmax(0,1fr) 12px minmax(0,1fr); }
+  .rc-arrow svg { width: 11px; height: 11px; }
+  .rc-flow img { border-radius: 4px; }
+}
+
+/* ---------- top navigation bar: floating, frosted, highlights the current section ---------- */
+.topbar {
+  position: fixed; z-index: 60; top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(16px, calc((100vw - var(--col)) / 2)); right: max(16px, calc((100vw - var(--col)) / 2));
+  height: 54px; padding: 0 8px 0 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-family: var(--sans);
+  background: rgba(255, 255, 255, .82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(29, 29, 31, .07);
+}
+.topbar .brand { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); white-space: nowrap; }
+.topbar .brand:hover { text-decoration: none; color: var(--accent); }
+.toc { display: flex; align-items: center; gap: 2px; }
+.toc a {
+  padding: 8px 12px; border-radius: 7px; font-size: 13.5px; font-weight: 600; color: var(--muted);
+  transition: color .15s, background-color .15s; white-space: nowrap;
+}
+.toc a:hover { color: var(--text); background: var(--bg-soft); text-decoration: none; }
+.toc a.active { color: var(--accent); background: #eaf1fd; }
+.nav-toggle {
+  display: none; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 7px;
+  background: #fff; color: var(--text); font: 600 13px var(--sans); cursor: pointer;
+}
+.nav-toggle .cur { color: var(--accent); }
+section[id] { scroll-margin-top: 24px; }
+@media (max-width: 760px) {
+  .topbar { height: 50px; padding: 0 6px 0 14px; top: calc(8px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; }
+  .nav-toggle { display: inline-flex; }
+  .toc {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0;
+    padding: 6px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 14px 32px rgba(29,29,31,.10);
+    display: none;
+  }
+  .topbar.open .toc { display: flex; }
+  .toc a { padding: 11px 12px; font-size: 14.5px; }
+  section[id] { scroll-margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .toc a { transition: none; } }
+
+/* evaluation-setting chips on 3.2 sub-headings */
+.mini-env { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.env {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 9px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; line-height: 1.2;
+}
+.env svg { width: 15px; height: 15px; flex: none; }
+.env-sim  { color: #5b4bc4; background: #f1effc; border: 1px solid #ddd8f6; }
+.env-real { color: #fff; background: var(--accent); border: 1px solid var(--accent); }

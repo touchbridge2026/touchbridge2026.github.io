@@ -13,14 +13,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=22">
+  <link rel="stylesheet" href="static/css/style.css?v=28">
 </head>
 <body>
 
 <!-- =====================================================================
      COVER / 封面
      ===================================================================== -->
-<header class="hero">
+<header class="hero" id="top">
   <div class="hero-inner">
     <!-- 会议/状态标签，不需要可以整行删掉 -->
 
@@ -102,15 +102,18 @@
   </div>
 </header>
 
-<!-- 左侧目录（宽屏才显示）。新增章节时在这里加一行 -->
-<nav class="toc" id="toc">
-  <a href="#overview">Overview</a>
-  <a href="#motivation">Motivation</a>
-  <a href="#method">Method</a>
-  <a href="#experiments">Experiments</a>
-  <a href="#conclusion">Conclusion</a>
-
-</nav>
+<!-- 顶部导航栏：滚动时高亮当前章节。新增章节时在 <nav> 里加一行 <a href="#章节id">名字</a> -->
+<div class="topbar" id="topbar">
+  <a class="brand" href="#top">TouchBridge</a>
+  <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="toc">Menu <span class="cur"></span></button>
+  <nav class="toc" id="toc" aria-label="Sections">
+    <a href="#overview">Overview</a>
+    <a href="#motivation">Motivation</a>
+    <a href="#method">Method</a>
+    <a href="#experiments">Experiments</a>
+    <a href="#conclusion">Conclusion</a>
+  </nav>
+</div>
 
 <main class="article">
 <div class="col">
@@ -340,7 +343,7 @@
 
   <!-- ---------- 3.2 ---------- -->
   <h3>3.2 Tac-Retarget vs. kinematic retargeting</h3>
-  <h4 class="mini">Contact preservation</h4>
+  <h4 class="mini mini-env">Contact preservation <span class="env env-sim"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Simulation</span></h4>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Method</th><th>Contact error (mm) ↓</th></tr></thead>
@@ -355,10 +358,9 @@
     </table>
   </div>
 
-  <h4 class="mini">Downstream policy performance</h4>
-  <!-- 横向条形卡片：数据写在 data-rank 里（JSON），第一个方法为 Ours -->
-  <div class="rank-cards wide" data-rank='{"methods":["Tac-Retarget (Ours)","w/o contact graph","w/o contact alignment","Kinematic only","DexPilot","UniDex"],"split":4,"ref":4,"refName":"DexPilot","tasks":[{"name":"Average","values":[72.5,48.8,43.8,38.8,47.5,30.0]},{"name":"Flip Book","values":[90,70,60,55,60,40]},{"name":"Screw Bulb","values":[70,45,40,40,35,15]},{"name":"Grasp Egg Roll","values":[75,55,45,40,55,40]},{"name":"Apply Sauce","values":[55,25,30,20,40,25]}]}'></div>
-  <p class="rank-note">Real-robot success rate over 20 trials per task, GR00T N1.7 fine-tuned on 60 converted human demonstrations per task. Rows 2–4 are ablations of Tac-Retarget; DexPilot and UniDex are existing retargeting methods.</p>
+  <h4 class="mini mini-env">Downstream policy performance <span class="env env-real"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h8M9 20v-5l5-5M14 10l3-3M17 7l2 2M14 10l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="15" r="1.6" fill="currentColor"/></svg>Real robot</span></h4>
+  <!-- 横向条形卡片：数据写在 data-rank 里（JSON），第一个方法为 Ours；frames 为每个任务的四帧流程图（static/images/tasks/） -->
+  <div class="rank-cards wide" data-rank='{"methods":["Tac-Retarget (Ours)","w/o contact graph","w/o contact alignment","Kinematic only","DexPilot","UniDex"],"split":4,"ref":4,"refName":"DexPilot","tasks":[{"name":"Average","values":[72.5,48.8,43.8,38.8,47.5,30.0]},{"name":"Flip Book","values":[90,70,60,55,60,40],"frames":["static/images/tasks/flip_book_1.jpg","static/images/tasks/flip_book_2.jpg","static/images/tasks/flip_book_3.jpg","static/images/tasks/flip_book_4.jpg"]},{"name":"Screw Bulb","values":[70,45,40,40,35,15],"frames":["static/images/tasks/screw_bulb_1.jpg","static/images/tasks/screw_bulb_2.jpg","static/images/tasks/screw_bulb_3.jpg","static/images/tasks/screw_bulb_4.jpg"]},{"name":"Grasp Egg Roll","values":[75,55,45,40,55,40],"frames":["static/images/tasks/grasp_egg_roll_1.jpg","static/images/tasks/grasp_egg_roll_2.jpg","static/images/tasks/grasp_egg_roll_3.jpg","static/images/tasks/grasp_egg_roll_4.jpg"]},{"name":"Apply Sauce","values":[55,25,30,20,40,25],"frames":["static/images/tasks/apply_sauce_1.jpg","static/images/tasks/apply_sauce_2.jpg","static/images/tasks/apply_sauce_3.jpg","static/images/tasks/apply_sauce_4.jpg"]}]}'></div>
 </section>
 
 <!-- =====================================================================
@@ -383,6 +385,6 @@
   © 2026 TouchBridge authors. This page is open source — feel free to borrow the template.
 </footer>
 
-<script defer src="static/js/main.js?v=21"></script>
+<script defer src="static/js/main.js?v=26"></script>
 </body>
 </html>

@@ -7,20 +7,26 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Side table of contents: show after the cover, highlight current section
-  var toc = document.getElementById("toc");
-  if (!toc) return;
+  // Top navigation: highlight the section currently in view; "Menu" dropdown on phones
+  var toc = document.getElementById("toc"), bar = document.getElementById("topbar");
+  if (!toc || !bar) return;
   var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
   var sections = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
-  var hero = document.querySelector(".hero");
+  var toggle = bar.querySelector(".nav-toggle"), cur = bar.querySelector(".nav-toggle .cur");
   function onScroll() {
-    var y = window.scrollY;
-    toc.classList.toggle("show", y > hero.offsetHeight * 0.7);
-    var current = 0;
-    sections.forEach(function (s, i) { if (s && s.getBoundingClientRect().top < window.innerHeight * 0.35) current = i; });
-    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+    var current = -1, line = Math.min(window.innerHeight * 0.35, 260);
+    sections.forEach(function (s, i) { if (s && s.getBoundingClientRect().top < line) current = i; });
+    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 2) current = sections.length - 1;
+    links.forEach(function (a, i) { a.classList.toggle("active", i === current); if (i === current) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); });
+    if (cur) cur.textContent = current >= 0 ? "· " + links[current].textContent : "";
   }
+  if (toggle) toggle.addEventListener("click", function () {
+    var open = bar.classList.toggle("open"); toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  links.forEach(function (a) { a.addEventListener("click", function () { bar.classList.remove("open"); if (toggle) toggle.setAttribute("aria-expanded", "false"); }); });
+  document.addEventListener("click", function (e) { if (!bar.contains(e.target)) { bar.classList.remove("open"); if (toggle) toggle.setAttribute("aria-expanded", "false"); } });
   window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
   onScroll();
 });
 
@@ -105,6 +111,15 @@ document.addEventListener("DOMContentLoaded", function () {
       head.appendChild(el("div", "rc-title", t.name));
       head.appendChild(el("div", "rc-delta", (delta >= 0 ? "+" : "") + delta.toFixed(1) + " pts over " + r.refName));
       card.appendChild(head);
+      if (t.frames && t.frames.length) {                       // task flowchart: frame -> frame -> ...
+        var flow = el("div", "rc-flow");
+        t.frames.forEach(function (src, k) {
+          if (k) flow.appendChild(el("span", "rc-arrow", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'));
+          var img = el("img"); img.src = src; img.alt = t.name + " – step " + (k + 1); img.loading = "lazy";
+          flow.appendChild(img);
+        });
+        card.appendChild(flow);
+      }
       r.methods.forEach(function (m, mi) {
         if (mi === r.split) card.appendChild(el("div", "rc-split"));
         var row = el("div", "rc-row" + (mi === 0 ? " ours" : ""));
