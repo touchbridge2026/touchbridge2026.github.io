@@ -13,8 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <link rel="stylesheet" href="static/css/style.css?v=14">
+  <link rel="stylesheet" href="static/css/style.css?v=22">
 </head>
 <body>
 
@@ -132,28 +131,6 @@
     </div>
   </figure>
 
-  <p class="lead">
-    Human demonstrations are a fast and scalable source of data for dexterous manipulation — but differences in hand
-    shape and sensing make it hard to transfer <em>contact-rich</em> interactions to a robot.
-    <strong>TouchBridge</strong> uses fingertip touch as the bridge between the two embodiments.
-  </p>
-  <p>
-    TouchBridge is a hardware–software co-designed framework for human-to-robot data transformation.
-    A wearable capture interface, <strong>TouchBridge-Cap</strong>, and a matching robot interface share the same
-    wrist-camera viewpoint and fingertip tactile layout. On top of this correspondence, <strong>Tac-Retarget</strong>
-    uses the measured contact to align fingertip contact patches and preserve their spatial relations within and across
-    hands — with no object mesh, no object-pose estimate and no physics simulation. Combined with visual synthesis and
-    camera-anchored action conversion, TouchBridge turns raw human demonstrations into robot-domain data for fine-tuning
-    a pretrained vision-language-action (VLA) model.
-  </p>
-
-  <figure class="fig wide">
-    <img src="static/images/teaser.jpg" alt="TouchBridge overview" loading="lazy">
-    <figcaption><b>TouchBridge at a glance.</b> TouchBridge-Cap records human demonstrations with sensing aligned to the
-      robot. Tac-Retarget converts them into robot-domain training data while preserving demonstrated contact locations
-      and spatial relations.</figcaption>
-  </figure>
-
   <div class="stats">
     <div class="stat"><div class="num">72.5%</div><div class="lbl">success with human data only<br>(vs. 77.5% teleop)</div></div>
     <div class="stat"><div class="num">7.0×</div><div class="lbl">faster demo<br>collection</div></div>
@@ -231,25 +208,10 @@
 <section id="method">
   <p class="kicker">2 · Method</p>
   <h2>How TouchBridge works</h2>
-  <p>
-    TouchBridge has three parts: a <strong>hardware co-design</strong> that aligns what the human and the robot see and
-    feel, <strong>Tac-Retarget</strong> that transfers motion while preserving contact, and a
-    <strong>data transformation pipeline</strong> that produces robot-domain observations and actions.
-  </p>
 
   <!-- ---------- 2.1 ---------- -->
   <h3>2.1 Human–robot vision and tactile system</h3>
-  <p>
-    <strong>TouchBridge-Cap</strong> is a wearable interface that records an egocentric RGB stream (Intel RealSense
-    D455), two wrist-view RGB streams, articulated hand kinematics from a pair of Manus gloves, and distributed contact
-    from a PaXini Hall-effect tactile array on every fingertip. AprilTag fiducials near the wrists are localized in the
-    egocentric video to bring the glove-estimated fingertip poses into the camera frame.
-  </p>
-  <p>
-    The robot — a bimanual platform with two 20-DoF Wuji Hands — carries the same sensors: an egocentric camera,
-    wrist cameras mounted at matching viewpoints, and five PaXini sensors per hand at corresponding fingertip locations.
-    This gives aligned wrist views and fingertip-local tactile signals across embodiments.
-  </p>
+  <p class="brief">TouchBridge-Cap and the robot share the same wrist-camera viewpoint and fingertip tactile layout.</p>
   <!-- 两张图并排：每个 <figure> 的 style="--ar: 宽/高" 控制宽度比例，使两图等高 -->
   <div class="fig-row wide">
     <figure style="--ar: 1.92">
@@ -265,69 +227,47 @@
   </div>
   <p class="zoom-hint">Hover over the images to zoom in on details.</p>
 
-  <!-- TouchBridge-Cap 跟踪可视化视频：替换 src/poster 即可 -->
-  <p>
-    <strong>Stable hand tracking.</strong> External trackers such as the HTC Vive Tracker rely on a clear line of sight
-    to base stations, which is easily blocked during close-range, bimanual manipulation. These problems become most
-    pronounced <strong>when the hand moves quickly or the wrist rotates/flips</strong> — exactly the motions that
-    contact-rich tasks such as screwing a bulb or turning a page require — and show up as <em>tracking loss</em>,
-    sudden <em>pose jumps</em> and <em>latency</em> between the tracker and the camera stream.
-    TouchBridge-Cap avoids these issues by localizing multi-face AprilTag cubes directly in the egocentric video: the
-    multi-face design keeps a tag visible across a wide range of wrist orientations, and because hand poses are
-    estimated from the very frames the policy observes, they are inherently time-synchronized with the images — no
-    separate tracking system to calibrate or align.
-  </p>
-  <figure class="fig">
-    <video autoplay muted loop playsinline controls preload="metadata" poster="static/videos/touchbridge_cap_tracking.jpg?v=2">
-      <source src="static/videos/touchbridge_cap_tracking.mp4?v=2" type="video/mp4">
-    </video>
-    <figcaption><b>TouchBridge-Cap tracking visualization.</b> Fingertip positions estimated by TouchBridge-Cap,
-      projected onto the egocentric view during a Screw Bulb demonstration. The tracked fingertips stay attached to the
-      hands throughout fast motion, wrist rotation and occlusion, without dropouts or jumps.</figcaption>
+  <!-- 稳定跟踪：Vive Tracker 的问题 vs 我们的装置。改文字直接改这里 -->
+  <h4 class="mini">Stable hand tracking</h4>
+  <div class="compare">
+    <div class="cmp cmp-bad">
+      <div class="cmp-h"><span class="cmp-ic" aria-hidden="true">✕</span>HTC Vive Tracker</div>
+      <p>Under fast hand motion or wrist flips: <b>tracking loss</b>, <b>pose jumps</b> and <b>latency</b>.</p>
+    </div>
+    <div class="cmp cmp-good">
+      <div class="cmp-h"><span class="cmp-ic" aria-hidden="true">✓</span>TouchBridge-Cap</div>
+      <p>Multi-face AprilTags tracked in the egocentric video stay visible and frame-synchronized.</p>
+    </div>
+  </div>
+  <!-- 跟踪视频 + 同步触觉曲线：左边视频（1.5 倍速），右边五指触觉力随时间变化。
+       数据在 static/data/tactile_screw_bulb.json；data-speed 必须等于视频的加速倍数 -->
+  <figure class="fig wide tac-sync" data-tactile="static/data/tactile_screw_bulb.json" data-speed="1.5">
+    <div class="tac-grid">
+      <div class="tac-video">
+        <video autoplay muted loop playsinline controls preload="metadata" poster="static/videos/touchbridge_cap_tracking.jpg?v=2">
+          <source src="static/videos/touchbridge_cap_tracking.mp4?v=2" type="video/mp4">
+        </video>
+      </div>
+      <div class="tac-panel">
+        <div class="tac-head">
+          <span class="tac-title">Right-hand fingertip force</span>
+        </div>
+        <div class="tac-plots"></div>
+      </div>
+    </div>
+    <figcaption><b>TouchBridge-Cap tracking with synchronized touch.</b> Left: fingertip positions projected onto the
+      egocentric view (Screw Bulb). Right: force magnitude from each fingertip tactile sensor of the
+      right hand, drawn up to the current video frame. Ring and little fingers read 0 N throughout this clip.</figcaption>
   </figure>
 
   <!-- ---------- 2.2 ---------- -->
-  <h3>2.2 Tac-Retarget: tactile-conditioned retargeting</h3>
-  <p>
-    Given the human fingertip poses and synchronized tactile measurements at each time step, Tac-Retarget solves for
-    both robot hand-base poses and joint configurations:
-  </p>
-  <div class="math" data-tex="\mathbf{x}^{R*}(t)=\arg\min_{\mathbf{x}^R(t)\in\mathcal{X}^R}\; \mathcal{L}_{\text{pose}}+\lambda_C\,\mathcal{L}_{\text{contact}}+\lambda_G\,\mathcal{L}_{\text{graph}}+\mathcal{L}_{\text{reg}}"></div>
-  <p>No object mesh or object-pose estimate ever enters the optimization. The three main terms are:</p>
-  <ul>
-    <li><strong>Fingertip pose alignment</strong> tracks demonstrated fingertip positions and orientations in the camera
-      frame, with contact-conditioned weights. The hand-base poses stay free variables instead of copying the human wrist.</li>
-    <li><strong>Tactile contact alignment</strong> computes a response-weighted contact center on each contacting
-      fingertip and matches both this patch center and the distribution of active taxels between human and robot.</li>
-    <li><strong>Contact-graph preservation</strong> builds a tactile-activated graph with intra-hand and cross-hand edges
-      between contacting fingertips, and matches weighted relative offsets so that the spatial relations among
-      simultaneous contacts are kept.</li>
-  </ul>
-  <figure class="fig wide">
-    <img src="static/images/tac_retarget.png" alt="Tac-Retarget" loading="lazy">
-    <figcaption><b>Tac-Retarget.</b> (a) Fingertip pose alignment. (b) Contact alignment of the patch center and active
-      taxels. (c) A tactile-activated contact graph preserves spatial relations among active contacts within and across
-      the two hands.</figcaption>
-  </figure>
-
-  <!-- ---------- 2.3 ---------- -->
-  <h3>2.3 Human-to-robot data transformation</h3>
-  <p>
-    <strong>Observation synthesis.</strong> Wrist views are kept as-is thanks to the matched mounts; the egocentric view
-    is converted to the robot domain. SAM 2 segments the human hands and wearable hardware, ProPainter inpaints the masked
-    regions, and the retargeted robot hands are rendered back with calibrated intrinsics and depth-aware occlusion.
-  </p>
-  <p>
-    <strong>Camera-anchored actions.</strong> Following UMI, arm actions are expressed as end-effector poses relative to
-    the start of each action chunk, using a static scene AprilTag to compensate for head-camera motion. Hand actions are
-    absolute joint targets from Tac-Retarget.
-  </p>
+  <h3>2.2 Human-to-robot data transformation</h3>
   <!-- 流程图视频：人类示范 → retarget 渲染 → 真机 replay。每个任务一行，视频在 static/videos/flow/，替换同名文件或改 src/poster 即可 -->
   <figure class="fig wide flow">
     <div class="flow-head">
       <span class="flow-step"><i>1</i>Human demonstration</span>
       <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="flow-step"><i>2</i>Retarget &amp; render</span>
+      <span class="flow-step"><i>2</i>Tac-Retarget &amp; render</span>
       <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <span class="flow-step"><i>3</i>Real-robot replay</span>
     </div>
@@ -363,17 +303,7 @@
       <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/apply_sauce_replay.jpg" aria-label="Apply Sauce – real-robot replay"><source src="static/videos/flow/apply_sauce_replay.mp4" type="video/mp4"></video>
     </div>
-    <figcaption><b>From human demonstration to robot data.</b> For each task, the raw egocentric human demonstration
-      (left); the same scene after the human hands and wearable hardware are inpainted and the Tac-Retarget robot hands
-      are rendered in (middle); and the converted actions replayed on the real robot (right). Clips play at their
-      original speed and loop independently.</figcaption>
   </figure>
-
-  <!-- 示例：如果要在 Method 里加一个新的小节，复制下面这段并取消注释
-  <h3>2.4 New subsection title</h3>
-  <p>Text ...</p>
-  <figure class="fig"><div class="placeholder">Figure placeholder</div><figcaption>Caption ...</figcaption></figure>
-  -->
 </section>
 
 <!-- =====================================================================
@@ -382,74 +312,45 @@
 <section id="experiments">
   <p class="kicker">3 · Experiments</p>
   <h2>Does it work on a real robot?</h2>
-  <p>We evaluate TouchBridge with data analyses and real-robot experiments around four questions:</p>
-  <ol>
-    <li>How close are our human-derived robot demonstrations to real robot data, in both observations and actions?</li>
-    <li>Can policies trained <em>only</em> on human-derived data match policies trained on teleoperated robot data?</li>
-    <li>How does Tac-Retarget compare with existing simulation-free retargeting methods, and what do its tactile parts contribute?</li>
-    <li>How does policy pretraining affect learning from human-derived data?</li>
-  </ol>
 
   <!-- ---------- 3.1 ---------- -->
-  <h3>3.1 Setup and tasks</h3>
-  <p>
-    All experiments run on a Moz1 bimanual robot with two Wuji Hands. We study four contact-rich tasks:
-    <strong>Flip Book</strong> (turn one page with the index finger),
-    <strong>Screw Bulb</strong> (screw a bulb in until it lights up),
-    <strong>Apply Sauce</strong> (hold a baguette and squeeze ketchup along it) and
-    <strong>Grasp Egg Roll</strong> (pick up a fragile egg roll without breaking it).
-    For each task we collect 60 human and 60 teleoperated robot demonstrations; tactile signals are used only for
-    retargeting, not as policy input. Each policy is evaluated over 20 real-world trials.
-  </p>
-  <figure class="fig">
-    <img src="static/images/tasks.jpg" alt="Four tasks" loading="lazy">
-    <figcaption><b>Four contact-rich evaluation tasks.</b></figcaption>
+  <h3>3.1 Human-derived vs. teleoperated robot data</h3>
+  <div class="headline">
+    <div class="hl-item">
+      <div class="hl-pair">
+        <div class="hl-stack"><span class="hl-ours">72.5%</span><span class="hl-tag hl-tag-ours">Human-derived data only</span></div>
+        <span class="hl-vs">vs</span>
+        <div class="hl-stack"><span class="hl-ref">77.5%</span><span class="hl-tag">Teleoperated robot data</span></div>
+      </div>
+      <div class="hl-claim"><span class="hl-pill">Only 5 pts lower</span>Human-derived data nearly matches teleoperation in policy success, with zero robot demonstrations collected.</div>
+    </div>
+    <div class="hl-item">
+      <div class="hl-num"><span class="hl-ours">7.0×</span></div>
+      <div class="hl-lbl">faster demonstration collection (11.7 s vs. 81.7 s per demo)</div>
+    </div>
+  </div>
+
+  <!-- 动态柱状图：数据写在 data-chart 里（JSON），改数字直接改这里；动画由 static/js/main.js 生成 -->
+  <figure class="fig wide bars-fig">
+    <div class="bars-legend">
+      <span><i class="sw sw-1"></i>Human-derived (ours)</span>
+      <span><i class="sw sw-2"></i>Teleoperated</span>
+    </div>
+    <div class="bars-panels">
+      <div class="bar-chart" data-chart='{"title":"(a) Action replay","ylabel":"Replay success (%)","unit":"%","max":100,"ticks":[0,25,50,75,100],"groups":["Apply Sauce","Screw Bulb","Flip Book","Grasp Egg Roll","Average"],"series":[[75,85,100,90,87.5]]}'></div>
+      <div class="bar-chart" data-chart='{"title":"(b) Policy learning","ylabel":"Policy success (%)","unit":"%","max":100,"ticks":[0,25,50,75,100],"groups":["Apply Sauce","Screw Bulb","Flip Book","Grasp Egg Roll","Average"],"series":[[55,70,90,75,72.5],[60,75,90,85,77.5]]}'></div>
+      <div class="bar-chart" data-chart='{"title":"(c) Collection efficiency","ylabel":"Time per successful demo (s)","unit":" s","max":150,"ticks":[0,30,60,90,120,150],"groups":["Apply Sauce","Screw Bulb","Flip Book","Grasp Egg Roll","Average"],"series":[[14.1,16.0,8.5,8.3,11.7],[80.5,119.5,59.1,67.7,81.7]],"ann":["5.7×","7.5×","6.9×","8.1×","7.0×"]}'></div>
+    </div>
   </figure>
 
   <!-- ---------- 3.2 ---------- -->
-  <h3>3.2 Quality of human-derived demonstrations</h3>
-  <p>
-    <strong>Visual similarity.</strong> We feed multi-view observations into the VLM backbone of GR00T N1.7 and look at
-    the features before the action expert. Human-derived robot observations overlap strongly with real-robot ones, while
-    raw human observations are clearly separated — the transformation closes most of the visual gap.
-  </p>
-  <figure class="fig wide">
-    <img src="static/images/feature_distribution.png" alt="Feature distribution" loading="lazy">
-    <figcaption><b>Observations across data domains.</b> (a) Multi-view observations from real-robot and human-derived
-      data. (b) VLM feature distributions before the action expert.</figcaption>
-  </figure>
-  <p>
-    <strong>Action replay.</strong> Replaying 20 converted demonstrations per task on the robot under matched initial
-    scenes succeeds <strong>87.5%</strong> of the time on average.
-  </p>
-
-  <!-- ---------- 3.3 ---------- -->
-  <h3>3.3 Human-derived vs. teleoperated robot data</h3>
-  <p>
-    We fine-tune GR00T N1.7 on 60 human-derived or 60 teleoperated demonstrations per task with identical settings.
-    Policies trained only on human-derived data reach <strong>72.5%</strong> average success versus
-    <strong>77.5%</strong> with teleoperated data — equal on Flip Book and within ten points on every other task.
-    Meanwhile, a successful human demonstration takes 11.7 s on average compared with 81.7 s for teleoperation,
-    a <strong>7.0×</strong> speedup.
-  </p>
-  <figure class="fig wide">
-    <img src="static/images/human_vs_robot_data.png" alt="Human-derived vs teleoperated" loading="lazy">
-    <figcaption><b>(a)</b> Action-replay success. <b>(b)</b> Real-robot success of GR00T N1.7 fine-tuned on 60
-      demonstrations per task from each source. <b>(c)</b> Average collection time per successful demonstration.</figcaption>
-  </figure>
-
-  <!-- ---------- 3.4 ---------- -->
-  <h3>3.4 Tac-Retarget vs. kinematic retargeting</h3>
-  <p>
-    <strong>Contact preservation.</strong> We replay retargeted Grasp Egg Roll trajectories in Isaac Sim with a
-    reconstructed object mesh and measure the distance between the human tactile contact center and the simulated one.
-    Tac-Retarget gives the lowest error; removing either tactile component increases it.
-  </p>
+  <h3>3.2 Tac-Retarget vs. kinematic retargeting</h3>
+  <h4 class="mini">Contact preservation</h4>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Method</th><th>Contact error (mm) ↓</th></tr></thead>
       <tbody>
-        <tr class="ours"><td>Tac-Retarget (ours)</td><td>4.667</td></tr>
+        <tr class="ours"><td>Tac-Retarget (<b>Ours</b>)</td><td>4.667</td></tr>
         <tr><td>DexPilot</td><td>6.354</td></tr>
         <tr><td>UniDex</td><td>7.715</td></tr>
         <tr><td>Tac-Retarget w/o contact graph</td><td>6.659</td></tr>
@@ -458,34 +359,11 @@
       </tbody>
     </table>
   </div>
-  <figure class="fig">
-    <img src="static/images/retarget_qualitative.jpg" alt="Qualitative retargeting comparison" loading="lazy">
-    <figcaption><b>Qualitative comparison.</b> Kinematic baselines show missing contacts, misplaced contacts and object
-      penetration; Tac-Retarget keeps the intended fingertip contacts.</figcaption>
-  </figure>
-  <p>
-    <strong>Downstream policy performance.</strong> Converting the same 60 human demonstrations per task with each
-    method and fine-tuning GR00T N1.7, Tac-Retarget is best on all four tasks with <strong>72.5%</strong> average
-    success, <strong>+25.0</strong> points over DexPilot and <strong>+42.5</strong> over UniDex. Dropping either tactile
-    component lowers success, with the largest drop when both are removed.
-  </p>
-  <figure class="fig">
-    <img src="static/images/retarget_policy_success.png" alt="Policy success of retargeting methods" loading="lazy">
-    <figcaption><b>Real-robot success rates</b> of Tac-Retarget, its tactile ablations and existing retargeting
-      methods.</figcaption>
-  </figure>
 
-  <!-- ---------- 3.5 ---------- -->
-  <h3>3.5 Effect of policy pretraining</h3>
-  <p>
-    With the same 60 converted demonstrations per task, pretrained GR00T N1.7 and π<sub>0.5</sub> reach 72.5% and 38.8%,
-    while their from-scratch versions reach only 6.2% and 3.8%; Diffusion Policy reaches 13.8%. Pretraining matters a lot
-    when learning from a limited set of human-derived demonstrations.
-  </p>
-  <figure class="fig">
-    <img src="static/images/policy_pretraining.png" alt="Effect of pretraining" loading="lazy">
-    <figcaption><b>Success rates under different policies and pretraining settings.</b></figcaption>
-  </figure>
+  <h4 class="mini">Downstream policy performance</h4>
+  <!-- 横向条形卡片：数据写在 data-rank 里（JSON），第一个方法为 Ours -->
+  <div class="rank-cards wide" data-rank='{"methods":["Tac-Retarget (Ours)","w/o contact graph","w/o contact alignment","Kinematic only","DexPilot","UniDex"],"split":4,"ref":4,"refName":"DexPilot","tasks":[{"name":"Average","values":[72.5,48.8,43.8,38.8,47.5,30.0]},{"name":"Flip Book","values":[90,70,60,55,60,40]},{"name":"Screw Bulb","values":[70,45,40,40,35,15]},{"name":"Grasp Egg Roll","values":[75,55,45,40,55,40]},{"name":"Apply Sauce","values":[55,25,30,20,40,25]}]}'></div>
+  <p class="rank-note">Real-robot success rate over 20 trials per task, GR00T N1.7 fine-tuned on 60 converted human demonstrations per task. Rows 2–4 are ablations of Tac-Retarget; DexPilot and UniDex are existing retargeting methods.</p>
 </section>
 
 <!-- =====================================================================
@@ -510,7 +388,6 @@
   © 2026 TouchBridge authors. This page is open source — feel free to borrow the template.
 </footer>
 
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="static/js/main.js?v=4"></script>
+<script defer src="static/js/main.js?v=21"></script>
 </body>
 </html>

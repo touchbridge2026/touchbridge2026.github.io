@@ -38,3 +38,160 @@ document.addEventListener("DOMContentLoaded", function () {
     box.addEventListener("mouseleave", function () { box.classList.remove("active"); });
   });
 });
+
+// ---------------------------------------------------------------------
+// Animated charts: grouped bars (data-chart) and ranked cards (data-rank).
+// Data lives in the HTML as JSON; bars grow when scrolled into view.
+// ---------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", function () {
+  var NAMES = ["Human-derived (ours)", "Teleoperated"];
+  function fmt(v, unit) { return (Math.round(v * 10) / 10).toString() + (unit || ""); }
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+
+  // shared tooltip
+  var tip = el("div", "viz-tip"); document.body.appendChild(tip);
+  function showTip(e, html) { tip.innerHTML = html; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on"); }
+  function hideTip() { tip.classList.remove("on"); }
+
+  document.querySelectorAll(".bar-chart[data-chart]").forEach(function (box, ci) {
+    var c; try { c = JSON.parse(box.getAttribute("data-chart")); } catch (err) { return; }
+    box.appendChild(el("div", "bc-title", c.title));
+    box.appendChild(el("div", "bc-sub", c.ylabel));
+    var plot = el("div", "bc-plot");
+    c.ticks.forEach(function (t) {
+      var y = (1 - t / c.max) * 100;
+      if (t > 0) { var g = el("div", "bc-grid"); g.style.top = y + "%"; plot.appendChild(g); }
+      var tk = el("div", "bc-tick", String(t)); tk.style.top = y + "%"; plot.appendChild(tk);
+    });
+    var groups = el("div", "bc-groups");
+    var n = c.groups.length, last = n - 1;
+    c.groups.forEach(function (name, gi) {
+      var g = el("div", "bc-group" + (c.series.length === 1 ? " single" : ""));
+      var top = 0;
+      c.series.forEach(function (s, si) {
+        var v = s[gi], h = v / c.max * 100; top = Math.max(top, h);
+        var b = el("div", "bc-bar s" + (si + 1));
+        b.style.setProperty("--h", h + "%");
+        b.style.setProperty("--d", (gi * 0.09 + si * 0.05) + "s");
+        if (gi === last) {
+          var lab = el("div", "bc-val", fmt(v)); lab.style.setProperty("--d2", (0.8 + gi * 0.09) + "s"); b.appendChild(lab);
+        }
+        var series = c.series.length === 1 ? "Human-derived" : NAMES[si];
+        b.addEventListener("mousemove", function (e) { showTip(e, name + "<br><b>" + series + ": " + fmt(v, c.unit) + "</b>"); });
+        b.addEventListener("mouseleave", hideTip);
+        g.appendChild(b);
+      });
+      if (c.ann) {
+        var a = el("div", "bc-ann", c.ann[gi]);
+        a.style.top = "calc(" + (100 - top) + "% - " + (gi === last ? 18 : 4) + "px)";
+        a.style.setProperty("--d2", (0.8 + gi * 0.09) + "s");
+        g.appendChild(a);
+      }
+      groups.appendChild(g);
+    });
+    plot.appendChild(groups);
+    box.appendChild(plot);
+    var xl = el("div", "bc-xl");
+    c.groups.forEach(function (name, gi) { xl.appendChild(el("span", gi === last ? "avg" : "", name)); });
+    box.appendChild(xl);
+  });
+
+  document.querySelectorAll("[data-rank]").forEach(function (wrap) {
+    var r; try { r = JSON.parse(wrap.getAttribute("data-rank")); } catch (err) { return; }
+    r.tasks.forEach(function (t, ti) {
+      var card = el("div", "rank-card" + (ti === 0 ? " main" : ""));
+      var delta = t.values[0] - t.values[r.ref];
+      var head = el("div", "rc-head");
+      head.appendChild(el("div", "rc-title", t.name));
+      head.appendChild(el("div", "rc-delta", (delta >= 0 ? "+" : "") + delta.toFixed(1) + " pts over " + r.refName));
+      card.appendChild(head);
+      r.methods.forEach(function (m, mi) {
+        if (mi === r.split) card.appendChild(el("div", "rc-split"));
+        var row = el("div", "rc-row" + (mi === 0 ? " ours" : ""));
+        var label = mi === 0 ? m.replace("(Ours)", "(<b>Ours</b>)") : m;
+        row.appendChild(el("div", "rc-label", label));
+        var tr = el("div", "rc-track"), f = el("div", "rc-fill");
+        f.style.setProperty("--w", t.values[mi] + "%");
+        f.style.setProperty("--d", (mi * 0.07) + "s");
+        tr.appendChild(f); row.appendChild(tr);
+        row.appendChild(el("div", "rc-val", t.values[mi].toFixed(1) + "%"));
+        card.appendChild(row);
+      });
+      wrap.appendChild(card);
+    });
+  });
+
+  // grow when visible (immediately if IntersectionObserver is unavailable)
+  var targets = document.querySelectorAll(".bar-chart[data-chart], .rank-card");
+  if (!("IntersectionObserver" in window)) { targets.forEach(function (t) { t.classList.add("is-in"); }); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("is-in"); io.unobserve(en.target); } });
+  }, { threshold: 0.25 });
+  targets.forEach(function (t) { io.observe(t); });
+});
+
+// ---------------------------------------------------------------------
+// Tracking video + synchronized fingertip tactile curves (.tac-sync).
+// Playback time x speed = time in the original (real-speed) video = RGB frame -> recording time.
+// ---------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".tac-sync[data-tactile]").forEach(function (fig) {
+    var video = fig.querySelector("video");
+    var plots = fig.querySelector(".tac-plots");
+    var speed = parseFloat(fig.getAttribute("data-speed")) || 1;
+    var NS = "http://www.w3.org/2000/svg";
+    function svgEl(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+    fetch(fig.getAttribute("data-tactile")).then(function (r) { return r.json(); }).then(function (d) {
+      var t = d.t, tMax = d.rgbTime[d.rgbTime.length - 1], W = 1000, H = 100;
+      var yMax = 0; d.force.forEach(function (f) { f.forEach(function (v) { if (v > yMax) yMax = v; }); });
+      yMax = Math.ceil(yMax * 2) / 2 || 1;                       // shared scale, e.g. 2.5 N
+      var rows = [];
+      d.fingers.forEach(function (name, fi) {
+        var f = d.force[fi], flat = Math.max.apply(null, f) === 0;
+        var row = document.createElement("div"); row.className = "tac-row";
+        var lab = document.createElement("div"); lab.className = "tac-name"; lab.textContent = name;
+        var svg = svgEl("svg", { "class": "tac-svg", viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img",
+                                 "aria-label": name + " fingertip force over time" });
+        var clipId = "tacclip-" + Math.random().toString(36).slice(2);
+        var defs = svgEl("defs", {}), clip = svgEl("clipPath", { id: clipId }), rect = svgEl("rect", { x: 0, y: -5, width: 0, height: H + 10 });
+        clip.appendChild(rect); defs.appendChild(clip); svg.appendChild(defs);
+        svg.appendChild(svgEl("rect", { "class": "bg", x: 0, y: 0, width: W, height: H, rx: 0 }));
+        for (var g = 1; g < yMax; g++) { var gy = H - g / yMax * H; svg.appendChild(svgEl("line", { "class": "grid", x1: 0, x2: W, y1: gy, y2: gy })); }
+        var pts = "";
+        for (var i = 0; i < t.length; i++) { pts += (i ? "L" : "M") + (t[i] / tMax * W).toFixed(1) + " " + (H - f[i] / yMax * H).toFixed(1); }
+        svg.appendChild(svgEl("path", { "class": "full", d: pts }));
+        var grp = svgEl("g", { "clip-path": "url(#" + clipId + ")" });
+        grp.appendChild(svgEl("path", { "class": "area", d: pts + "L" + W + " " + H + "L0 " + H + "Z" }));
+        grp.appendChild(svgEl("path", { "class": "played", d: pts }));
+        svg.appendChild(grp);
+        var head = svgEl("line", { "class": "head", x1: 0, x2: 0, y1: 0, y2: H }); svg.appendChild(head);
+        var val = document.createElement("div"); val.className = "tac-val"; val.textContent = "0.00 N";
+        row.appendChild(lab); row.appendChild(svg); row.appendChild(val); plots.appendChild(row);
+        rows.push({ f: f, flat: flat, rect: rect, head: head, val: val });
+      });
+      var ttl = fig.querySelector(".tac-title"); if (ttl) ttl.innerHTML += ' <span class="tac-scale">· ‖F‖, 0–' + yMax + ' N</span>';
+
+      function recTime() {
+        var orig = (video.currentTime || 0) * speed;              // time in the real-speed video
+        var k = orig * d.videoFps, k0 = Math.floor(k), n = d.rgbTime.length;
+        if (k0 >= n - 1) return d.rgbTime[n - 1];
+        if (k0 < 0) return 0;
+        return d.rgbTime[k0] + (d.rgbTime[k0 + 1] - d.rgbTime[k0]) * (k - k0);
+      }
+      function lastIdx(tr) { var lo = 0, hi = t.length - 1, ans = -1; while (lo <= hi) { var m = (lo + hi) >> 1; if (t[m] <= tr) { ans = m; lo = m + 1; } else hi = m - 1; } return ans; }
+      function draw() {
+        var tr = recTime(), x = Math.min(W, tr / tMax * W), idx = lastIdx(tr);
+        rows.forEach(function (r) {
+          r.rect.setAttribute("width", x); r.head.setAttribute("x1", x); r.head.setAttribute("x2", x);
+          r.val.textContent = (idx >= 0 ? r.f[idx] : 0).toFixed(2) + " N";
+        });
+      }
+      var raf = null;
+      function loop() { draw(); raf = video.paused ? null : requestAnimationFrame(loop); }
+      video.addEventListener("play", function () { if (!raf) raf = requestAnimationFrame(loop); });
+      ["seeked", "timeupdate", "loadedmetadata"].forEach(function (ev) { video.addEventListener(ev, draw); });
+      draw(); if (!video.paused) raf = requestAnimationFrame(loop);
+    }).catch(function () { plots.textContent = "Tactile data could not be loaded."; });
+  });
+});
