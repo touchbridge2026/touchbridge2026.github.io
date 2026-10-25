@@ -30,19 +30,37 @@ document.addEventListener("DOMContentLoaded", function () {
   onScroll();
 });
 
-// Hover-to-zoom: magnify any <div class="zoom"><img></div> around the cursor
+// Magnifier lens: rest the mouse on any <div class="zoom"><img></div> and, after a short delay,
+// a round lens appears just above the cursor showing that spot enlarged. The image itself never moves.
+// Per image: data-zoom="3" (magnification), data-lens="220" (lens diameter in px).
 document.addEventListener("DOMContentLoaded", function () {
+  if (!window.matchMedia || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  var lens = document.createElement("div"); lens.className = "zoom-lens"; lens.setAttribute("aria-hidden", "true");
+  document.body.appendChild(lens);
+  var DELAY = 350, timer = null, active = null, last = null;
+  function place(box, e) {
+    var img = box.querySelector("img"), r = img.getBoundingClientRect();
+    var z = parseFloat(box.getAttribute("data-zoom")) || 2.6, d = parseFloat(box.getAttribute("data-lens")) || 200;
+    var x = Math.min(Math.max(e.clientX - r.left, 0), r.width), y = Math.min(Math.max(e.clientY - r.top, 0), r.height);
+    lens.style.width = lens.style.height = d + "px";
+    lens.style.backgroundImage = 'url("' + (img.currentSrc || img.src) + '")';
+    lens.style.backgroundSize = (r.width * z) + "px " + (r.height * z) + "px";
+    lens.style.backgroundPosition = (d / 2 - x * z) + "px " + (d / 2 - y * z) + "px";
+    var left = e.clientX - d / 2, top = e.clientY - d - 18;           // above the cursor
+    if (top < 8) top = e.clientY + 22;                                  // not enough room: show below
+    left = Math.min(Math.max(left, 8), window.innerWidth - d - 8);
+    lens.style.left = left + "px"; lens.style.top = top + "px";
+  }
   document.querySelectorAll(".zoom").forEach(function (box) {
-    var img = box.querySelector("img");
-    if (!img) return;
-    function move(e) {
-      var r = box.getBoundingClientRect();
-      img.style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + "% " + ((e.clientY - r.top) / r.height * 100) + "%";
-    }
-    box.addEventListener("mouseenter", function (e) { move(e); box.classList.add("active"); });
-    box.addEventListener("mousemove", move);
-    box.addEventListener("mouseleave", function () { box.classList.remove("active"); });
+    if (!box.querySelector("img")) return;
+    box.addEventListener("mouseenter", function (e) {
+      last = e; clearTimeout(timer);
+      timer = setTimeout(function () { active = box; place(box, last); lens.classList.add("on"); }, DELAY);
+    });
+    box.addEventListener("mousemove", function (e) { last = e; if (active === box) place(box, e); });
+    box.addEventListener("mouseleave", function () { clearTimeout(timer); active = null; lens.classList.remove("on"); });
   });
+  window.addEventListener("scroll", function () { if (active) { active = null; lens.classList.remove("on"); } }, { passive: true });
 });
 
 // ---------------------------------------------------------------------

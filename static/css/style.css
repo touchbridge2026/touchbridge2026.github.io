@@ -242,15 +242,21 @@ footer { border-top: 1px solid var(--line); padding: 36px 24px 60px; text-align:
   .fig-row.wide { width: calc(100vw - 32px); }
 }
 
-/* hover-to-zoom: wrap an image in <div class="zoom">…</div>; set style="--zoom: 3" to change magnification */
+/* magnifier: wrap an image in <div class="zoom" data-zoom="2.6" data-lens="210">…</div> (lens logic in main.js) */
 .fig-row { margin-bottom: 8px; }
 .zoom { position: relative; overflow: hidden; border-radius: 8px; }
 .fig-row .zoom img, .zoom img { width: 100%; display: block; border-radius: 0; transition: transform .25s ease; transform-origin: center; }
 .zoom-hint { font-family: var(--sans); font-size: 12.5px; color: var(--faint); text-align: center; margin: 6px 0 30px; }
-@media (hover: hover) and (pointer: fine) {
-  .zoom { cursor: zoom-in; }
-  .zoom.active img { transform: scale(var(--zoom, 2.5)); transition: transform .15s ease; }
+@media (hover: hover) and (pointer: fine) { .zoom { cursor: crosshair; } }
+/* magnifier lens shown above the cursor (see main.js) */
+.zoom-lens {
+  position: fixed; z-index: 80; pointer-events: none; border-radius: 50%;
+  background-color: #fff; background-repeat: no-repeat;
+  border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(29,29,31,.12), 0 16px 40px rgba(29,29,31,.28);
+  opacity: 0; transform: scale(.85); transition: opacity .18s ease, transform .18s ease;
 }
+.zoom-lens.on { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) { .zoom-lens { transition: none; } }
 @media (hover: none), (pointer: coarse) { .zoom-hint { display: none; } .fig-row { margin-bottom: 34px; } }
 
 /* affiliations with emblems */
