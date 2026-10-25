@@ -298,3 +298,26 @@ footer { border-top: 1px solid var(--line); padding: 36px 24px 60px; text-align:
 section .data-badge { margin: 0 0 20px; font-size: 13.5px; gap: 8px; padding: 6px 14px 6px 6px; }
 section .data-badge .tag { font-size: 11.5px; padding: 4px 10px; }
 section .data-badge + p { margin-top: 0; }
+
+/* ---------- side table of contents: larger and more visible ---------- */
+.toc {
+  left: max(20px, calc((100vw - var(--wide)) / 2 - 160px));
+  font-size: 15px; line-height: 1.3;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 14px 0;
+}
+.toc::before {
+  content: "Contents";
+  font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); padding: 0 0 10px 16px;
+}
+.toc a {
+  display: block; padding: 8px 16px 8px 14px;
+  color: var(--muted); font-weight: 500;
+  border-left: 2px solid var(--line);
+  border-radius: 0 6px 6px 0;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.toc a:hover { color: var(--text); border-left-color: #b8b8be; background: var(--bg-soft); text-decoration: none; }
+.toc a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: #f3f7fe; }
+@media (min-width: 1280px) { .toc { display: flex; } }
