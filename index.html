@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <link rel="stylesheet" href="static/css/style.css?v=12">
+  <link rel="stylesheet" href="static/css/style.css?v=14">
 </head>
 <body>
 
@@ -322,10 +322,51 @@
     the start of each action chunk, using a static scene AprilTag to compensate for head-camera motion. Hand actions are
     absolute joint targets from Tac-Retarget.
   </p>
-  <figure class="fig wide">
-    <img src="static/images/data_generation.jpg" alt="Human-to-robot data generation" loading="lazy">
-    <figcaption><b>Human-to-robot data generation.</b> From left to right: raw human demonstration, removal mask,
-      inpainted scene, and the synthesized robot-domain observation.</figcaption>
+  <!-- 流程图视频：人类示范 → retarget 渲染 → 真机 replay。每个任务一行，视频在 static/videos/flow/，替换同名文件或改 src/poster 即可 -->
+  <figure class="fig wide flow">
+    <div class="flow-head">
+      <span class="flow-step"><i>1</i>Human demonstration</span>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="flow-step"><i>2</i>Retarget &amp; render</span>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="flow-step"><i>3</i>Real-robot replay</span>
+    </div>
+    <div class="flow-task">Flip Book</div>
+    <div class="flow-row">
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/flip_book_human.jpg" aria-label="Flip Book – human demonstration"><source src="static/videos/flow/flip_book_human.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/flip_book_render.jpg" aria-label="Flip Book – retargeted and rendered"><source src="static/videos/flow/flip_book_render.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/flip_book_replay.jpg" aria-label="Flip Book – real-robot replay"><source src="static/videos/flow/flip_book_replay.mp4" type="video/mp4"></video>
+    </div>
+    <div class="flow-task">Screw Bulb</div>
+    <div class="flow-row">
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/screw_bulb_human.jpg" aria-label="Screw Bulb – human demonstration"><source src="static/videos/flow/screw_bulb_human.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/screw_bulb_render.jpg" aria-label="Screw Bulb – retargeted and rendered"><source src="static/videos/flow/screw_bulb_render.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/screw_bulb_replay.jpg" aria-label="Screw Bulb – real-robot replay"><source src="static/videos/flow/screw_bulb_replay.mp4" type="video/mp4"></video>
+    </div>
+    <div class="flow-task">Grasp Egg Roll</div>
+    <div class="flow-row">
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/grasp_egg_roll_human.jpg" aria-label="Grasp Egg Roll – human demonstration"><source src="static/videos/flow/grasp_egg_roll_human.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/grasp_egg_roll_render.jpg" aria-label="Grasp Egg Roll – retargeted and rendered"><source src="static/videos/flow/grasp_egg_roll_render.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/grasp_egg_roll_replay.jpg" aria-label="Grasp Egg Roll – real-robot replay"><source src="static/videos/flow/grasp_egg_roll_replay.mp4" type="video/mp4"></video>
+    </div>
+    <div class="flow-task">Apply Sauce</div>
+    <div class="flow-row">
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/apply_sauce_human.jpg" aria-label="Apply Sauce – human demonstration"><source src="static/videos/flow/apply_sauce_human.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/apply_sauce_render.jpg" aria-label="Apply Sauce – retargeted and rendered"><source src="static/videos/flow/apply_sauce_render.mp4" type="video/mp4"></video>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <video autoplay muted loop playsinline preload="metadata" poster="static/videos/flow/apply_sauce_replay.jpg" aria-label="Apply Sauce – real-robot replay"><source src="static/videos/flow/apply_sauce_replay.mp4" type="video/mp4"></video>
+    </div>
+    <figcaption><b>From human demonstration to robot data.</b> For each task, the raw egocentric human demonstration
+      (left); the same scene after the human hands and wearable hardware are inpainted and the Tac-Retarget robot hands
+      are rendered in (middle); and the converted actions replayed on the real robot (right). Clips play at their
+      original speed and loop independently.</figcaption>
   </figure>
 
   <!-- 示例：如果要在 Method 里加一个新的小节，复制下面这段并取消注释
