@@ -694,3 +694,16 @@ figure.fig figcaption b, .fig-row figcaption b { font-weight: 600; }
   .db-txt { font-size: 1.45rem; }
   .demo-strip figure::before { font-size: 9px; top: 6px; left: 6px; padding: 2px 7px 2px 16px; background: radial-gradient(circle at 8px 50%, #22a861 2.6px, transparent 3px), rgba(255,254,251,.88); }
 }
+
+/* banner without sentence: center it; note under the rollout strip */
+.data-banner { padding: 18px 6px; gap: 30px; }
+.db-zero { padding-right: 30px; }
+.demo-note { max-width: 1240px; margin: 14px auto 0; font-family: var(--sans); font-size: 13.5px; font-style: italic; color: var(--muted); text-align: center; }
+@media (max-width: 760px) {
+  .data-banner { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+  .db-zero { border-right: 1px solid var(--line); padding-right: 20px; }
+  .db-zero .n { font-size: 48px; }
+  .db-zero .u { font-size: 11px; }
+  .db-tags { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .db-tag { font-size: 11px; padding: 3px 9px; }
+}
