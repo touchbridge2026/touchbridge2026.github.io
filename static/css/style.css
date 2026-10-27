@@ -711,3 +711,26 @@ figure.fig figcaption b, .fig-row figcaption b { font-weight: 600; }
 /* "contact-rich" pill: warm touch-orange */
 .db-tag.contact { color: #b4501b; border-color: #f2d5bf; background: #fdf3ea; }
 .tdot { width: 7px; height: 7px; border-radius: 50%; background: #f0702a; flex-shrink: 0; }
+
+/* ---------- 2.2 Tac-Retarget: objective + canvas animations ---------- */
+.tr-eq {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 4px 10px;
+  margin: 22px 0 8px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  font-family: var(--serif); font-style: italic; font-size: 1.45rem; color: #1c1c1e;
+}
+.tr-eq sub, .tr-eq sup { font-size: .58em; }
+.tr-min { font-style: normal; margin-right: 6px; }
+.tr-min sub { font-style: italic; }
+.tr-op { font-style: normal; color: var(--muted); }
+.tr-term { padding: 1px 8px 3px; border-radius: 8px; }
+.tr-term.c { background: #fdf0e4; color: #b4501b; }
+.tr-term.g { background: #f2ecff; color: #6a3fc7; }
+.tr-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 9px; vertical-align: .12em; }
+.tr-dot.c { background: #f0702a; }
+.tr-dot.g { background: #8c5cf0; }
+figure.tr-viz { margin-top: 18px; margin-bottom: 30px; }
+figure.tr-viz canvas {
+  display: block; width: 100%; border-radius: 14px; background: #121110;
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px rgba(20,16,10,.16);
+}
+@media (max-width: 760px) { .tr-eq { font-size: 1.15rem; padding: 12px 10px; } }

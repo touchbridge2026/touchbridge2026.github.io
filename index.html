@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- 字体：正文 Source Sans 3，标题 Newsreader（衬线），图注用等宽字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=41">
+  <link rel="stylesheet" href="static/css/style.css?v=42">
 </head>
 <body>
 
@@ -282,8 +282,31 @@
     </div>
   </figure>
 
-  <!-- ---------- 2.2 ---------- -->
-  <h3>2.2 Human-to-robot data transformation</h3>
+  <!-- ---------- 2.2 Tac-Retarget ----------
+       两个动画由 static/js/tacviz.js 在 <canvas data-tr="..."> 上实时绘制（示意动画，非真实数据） -->
+  <h3>2.2 Tac-Retarget: retargeting through touch</h3>
+  <p class="brief">Tac-Retarget solves for the poses and joints of both robot hands. The robot must reproduce three things from the demonstration: the human fingertip poses, <em>where</em> each fingertip touches, and <em>how</em> simultaneous contacts relate to each other. It uses fingertip touch only, with no object mesh and no pose estimate.</p>
+  <div class="tr-eq" aria-label="Tac-Retarget objective: minimise L_pose + lambda_C L_contact + lambda_G L_graph">
+    <span class="tr-min">min<sub>x<sup>R</sup>(t)</sub></span>
+    <span class="tr-term">&#8466;<sub>pose</sub></span><span class="tr-op">+</span>
+    <span class="tr-term c">&lambda;<sub>C</sub>&#8466;<sub>contact</sub></span><span class="tr-op">+</span>
+    <span class="tr-term g">&lambda;<sub>G</sub>&#8466;<sub>graph</sub></span>
+  </div>
+
+  <h4 class="mini"><span class="tr-dot c"></span>Tactile contact alignment</h4>
+  <p class="brief">Each fingertip's taxel responses define a contact patch, with a response-weighted center <i>&mu;</i> and a support of active taxels <i>X</i>. Human and robot sensors share the same taxel layout. Kinematic retargeting can match the fingertip position and still touch with the wrong part of the pad. Tac-Retarget aligns <i>&mu;</i> and <i>X</i>, so the robot touches with the same part of its fingertip as the human did.</p>
+  <figure class="fig wide tr-viz">
+    <canvas data-tr="contact" role="img" aria-label="Animation: a contact patch on the human fingertip sensor is transferred to the robot fingertip; kinematic retargeting misplaces the patch and Tac-Retarget slides it back into alignment."></canvas>
+  </figure>
+
+  <h4 class="mini"><span class="tr-dot g"></span>Contact-graph preservation</h4>
+  <p class="brief">Tactile activation decides which fingertips are in contact. These contacts form a graph, with intra-hand edges inside each hand and cross-hand edges between the two hands. Matching the graph's distance-weighted Laplacian coordinates keeps simultaneous contacts in the same spatial relation on the robot. This prevents lost contacts and penetration that kinematics alone would cause.</p>
+  <figure class="fig wide tr-viz">
+    <canvas data-tr="graph" role="img" aria-label="Animation: a bimanual grasp forms a contact graph on the human hands; the kinematic-only robot graph is distorted, and adding the contact-graph term restores it."></canvas>
+  </figure>
+
+  <!-- ---------- 2.3 ---------- -->
+  <h3>2.3 Human-to-robot data transformation</h3>
   <!-- 流程图视频：人类示范 → retarget 渲染 → 真机 replay。每个任务一行，视频在 static/videos/flow/，替换同名文件或改 src/poster 即可 -->
   <figure class="fig wide flow">
     <div class="flow-head">
@@ -410,5 +433,6 @@
 </footer>
 
 <script defer src="static/js/main.js?v=31"></script>
+<script defer src="static/js/tacviz.js?v=2"></script>
 </body>
 </html>
