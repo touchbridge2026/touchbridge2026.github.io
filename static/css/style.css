@@ -6,10 +6,10 @@
   --text: #1d1d1f;
   --muted: #6e6e73;
   --faint: #a1a1a6;
-  --line: #e5e5ea;
-  --bg: #f4f6f9;              /* 页面背景：带一点冷色调的浅灰白 */
-  --surface: #ffffff;         /* 卡片 / 导航栏 / 图表底色 */
-  --bg-soft: #eceff4;
+  --line: #e8e2d8;
+  --bg: #faf8f4;              /* 页面背景：暖米白 */
+  --surface: #fffefb;         /* 卡片 / 导航栏 / 图表底色 */
+  --bg-soft: #f2eee7;
   --accent: #2a6fdb;          /* 主题色：链接、强调数字 */
   --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -337,7 +337,7 @@ figure.fig.flow figcaption { margin-top: 16px; }
   --s1: var(--accent);      /* ours / human-derived */
   --s2: #e0895a;            /* teleoperated */
   --base: #a3abb6;          /* baseline bars */
-  --track: #e9ebef;         /* bar track */
+  --track: #ece7df;         /* bar track */
   --bad: #c4473a; --bad-bg: #fdf4f3; --bad-line: #f2d6d2;
   --good-bg: #f3f7fe; --good-line: #d6e3fa;
 }
@@ -419,7 +419,7 @@ h4.mini {
 .rank-card.main .rc-title { font-size: 1.7rem; }
 .rc-delta { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .rc-row { display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 1fr) 86px; align-items: center; gap: 14px; padding: 6px 0; }
-.rank-card.main .rc-row { grid-template-columns: minmax(0, 210px) minmax(0, 1fr) 92px; }
+.rank-card.main .rc-row { grid-template-columns: minmax(0, 210px) minmax(0, 1fr) 110px; }
 .rc-label { font-size: 13.5px; color: #3a3a3c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-track { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
 .rc-fill { height: 100%; width: var(--w); border-radius: 999px; background: var(--base);
@@ -602,11 +602,11 @@ html { background: var(--bg); }
   background:
     radial-gradient(900px 520px at 12% -8%, rgba(251, 141, 51, .13), transparent 62%),
     radial-gradient(900px 520px at 88% -8%, rgba(31, 116, 198, .13), transparent 62%),
-    linear-gradient(180deg, #fbfcfe 0%, var(--bg) 100%);
+    linear-gradient(180deg, #fdfcf9 0%, var(--bg) 100%);
 }
-.article { border-top-color: #e2e6ec; }
+.article { border-top-color: #e8e2d8; }
 .btn, .nav-toggle, .rank-card, .toc { background-color: var(--surface); }
 @media (min-width: 761px) { .toc { background: transparent; } }
 .tac-svg .bg { fill: var(--surface); }
-.flow-row video, .demo-strip video { background: #e6e9ee; }
-footer { border-top-color: #e2e6ec; }
+.flow-row video, .demo-strip video { background: #ece7de; }
+footer { border-top-color: #e8e2d8; }
