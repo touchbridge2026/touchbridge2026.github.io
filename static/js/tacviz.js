@@ -312,7 +312,7 @@
     holder: { col: [0.14, 0.56, 0.82], mat: [0.55, 60, 0.3, 0] },
     band: { col: [0.06, 0.3, 0.45], mat: [0.3, 30, 0.2, 0] }
   };
-  var CAM = window.__CAM || { tgt: [-0.05, 0.016, 0.012], d: 0.5, dm: 0.6, el: 0.55, az: -1.95 };
+  var CAM = window.__CAM || { tgt: [-0.05, 0.03, 0.01], d: 0.6, dm: 0.6, el: 0.42, az: -1.75 };
   var GL = { r: null, human: null, robot: null, bulb: null, failed: false, req: false };
   function glInit() {
     if (GL.req || !window.HandGL) return; GL.req = true;
@@ -320,8 +320,8 @@
     GL.bulb = HandGL.bulbParts(BULB);
     var base = (document.querySelector('script[src*="tacviz.js"]') || {}).src || '';
     var dir = base ? base.replace(/js\/tacviz\.js.*$/, 'data/') : 'static/data/';
-    HandGL.load(dir + 'hand_human.json?v=2').then(function (m) { GL.human = m; });
-    HandGL.load(dir + 'hand_wuji.json?v=2').then(function (m) { GL.robot = m; });
+    HandGL.load(dir + 'hand_human.json?v=3').then(function (m) { GL.human = m; });
+    HandGL.load(dir + 'hand_wuji.json?v=3').then(function (m) { GL.robot = m; });
   }
   function lerpQ(a, b, t) { var o = {}; for (var n in a) o[n] = a[n] + ((b[n] == null ? a[n] : b[n]) - a[n]) * t; return o; }
   function scaleQ(a, s, lim) { var o = {}; for (var n in a) o[n] = a[n] * s; return o; }
@@ -356,7 +356,7 @@
       var open = scaleQ(g.q, 0.6);
       var qq = lerpQ(open, q, reach * reach), lift = (1 - reach);
       var B = shiftM(Bg, [0, 0.1 * lift, 0]);
-      return { W: m.fk(qq, B), q: qq };
+      return { W: m.fk(qq, B), q: qq, blend: reach * reach };
     }
     function pads(m, Wl) {
       return m.extra.tips.map(function (tn) {
@@ -393,7 +393,7 @@
       loss = clamp(L / LK, 0, 1) * 0.94 + 0.02;
     }
 
-    var yaw = 0.5 * Math.sin(t * 2 * Math.PI / 18);
+    var yaw = 0.45 * Math.sin(t * 2 * Math.PI / 18);
     function panel(p, m, S, Cs, robot) {
       var M4 = HandGL.M4, asp = p.w / p.h;
       var tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
@@ -415,7 +415,7 @@
       draws.push({ mesh: B.neck, M: Id, col: MAT.neck.col, mat: MAT.neck.mat });
       draws.push({ mesh: B.globe, M: Id, col: MAT.globe.col, mat: MAT.globe.mat, emis: MAT.globe.emis });
       if (m.skin) {
-        draws.push({ mesh: m.skinned(S.W), M: Id, col: MAT.skin.col, mat: MAT.skin.mat });
+        draws.push({ mesh: m.skinned(S.W, S.blend), M: Id, col: MAT.skin.col, mat: MAT.skin.mat });
         Object.keys(m.nails).forEach(function (n) { if (S.W[n]) draws.push({ mesh: m.nails[n], M: S.W[n], col: MAT.nail.col, mat: MAT.nail.mat }); });
       }
       Object.keys(m.links).forEach(function (n) {
@@ -508,7 +508,7 @@
     overlay(pH, nH, CH, false, null);
     overlay(pR, nR, CR, true, ghost);
 
-    title(ctx, pH, k, 'HUMAN', 'MANO-style hand · tactile-activated contact graph');
+    title(ctx, pH, k, 'HUMAN', 'MANO hand · tactile-activated contact graph');
     title(ctx, pR, k, 'ROBOT', 'Wuji hand · same contact graph');
     if (!ready) {
       ctx.font = (11 * k) + 'px ' + MONO; ctx.fillStyle = C.faint; ctx.textAlign = 'center';

@@ -60,6 +60,10 @@
       this.skin = { rp: new Float32Array(p.length), rn: new Float32Array(nr.length), bi: b64(K.bi, Uint8Array), bw: b64(K.bw, Uint8Array), bones: K.bones,
                     mesh: { pos: new Float32Array(p.length), nrm: new Float32Array(nr.length), idx: b64(K.i, Uint16Array), ver: 0, dyn: true } };
       for (var i = 0; i < p.length; i++) { this.skin.rp[i] = p[i] / 1e4; this.skin.rn[i] = nr[i] / 127; }
+      if (K.o0) {         // MANO pose-corrective offsets at the open and the grasp pose
+        var o0 = b64(K.o0, Int16Array), o1 = b64(K.o1, Int16Array); this.skin.o0 = new Float32Array(o0.length); this.skin.o1 = new Float32Array(o1.length);
+        for (i = 0; i < o0.length; i++) { this.skin.o0[i] = o0[i] / 1e5; this.skin.o1[i] = o1[i] / 1e5; }
+      }
       this.nails = {};
       for (var nn in (json.nails || {})) {
         var A = json.nails[nn], ap = b64(A.p, Int16Array), an = b64(A.n, Int8Array), pp = new Float32Array(ap.length), pn = new Float32Array(an.length);
@@ -75,13 +79,14 @@
     for (r = 0; r < 3; r++) o[12 + r] = -(o[r] * m[12] + o[4 + r] * m[13] + o[8 + r] * m[14]);
     return o;
   }
-  Model.prototype.skinned = function (W) {
+  Model.prototype.skinned = function (W, blend) {
     var S = this.skin; if (!S) return null;
     if (!S.restInv) { var W0 = this.fk(this.extra.skin.restq || {}, M4.id()); S.restInv = S.bones.map(function (b) { return rinv(W0[b]); }); }
     var Ms = S.bones.map(function (b, i) { return M4.mul(W[b], S.restInv[i]); });
     var rp = S.rp, rn = S.rn, bi = S.bi, bw = S.bw, P = S.mesh.pos, N = S.mesh.nrm, n = rp.length / 3;
     for (var v = 0; v < n; v++) {
       var x = rp[3 * v], y = rp[3 * v + 1], z = rp[3 * v + 2], a = rn[3 * v], b = rn[3 * v + 1], c = rn[3 * v + 2];
+      if (S.o0) { var bt = blend == null ? 1 : blend; x += S.o0[3 * v] + (S.o1[3 * v] - S.o0[3 * v]) * bt; y += S.o0[3 * v + 1] + (S.o1[3 * v + 1] - S.o0[3 * v + 1]) * bt; z += S.o0[3 * v + 2] + (S.o1[3 * v + 2] - S.o0[3 * v + 2]) * bt; }
       var px = 0, py = 0, pz = 0, nx = 0, ny = 0, nz = 0;
       for (var k = 0; k < 4; k++) {
         var w = bw[4 * v + k]; if (!w) continue; w /= 255; var m = Ms[bi[4 * v + k]];
@@ -89,6 +94,15 @@
         nx += w * (m[0] * a + m[4] * b + m[8] * c); ny += w * (m[1] * a + m[5] * b + m[9] * c); nz += w * (m[2] * a + m[6] * b + m[10] * c);
       }
       P[3 * v] = px; P[3 * v + 1] = py; P[3 * v + 2] = pz; N[3 * v] = nx; N[3 * v + 1] = ny; N[3 * v + 2] = nz;
+    }
+    if (S.o0) {          // smooth normals from the posed surface
+      var I = S.mesh.idx; N.fill(0);
+      for (var f = 0; f < I.length; f += 3) {
+        var i0 = 3 * I[f], i1 = 3 * I[f + 1], i2 = 3 * I[f + 2];
+        var ux = P[i1] - P[i0], uy = P[i1 + 1] - P[i0 + 1], uz = P[i1 + 2] - P[i0 + 2], vx = P[i2] - P[i0], vy = P[i2 + 1] - P[i0 + 1], vz = P[i2 + 2] - P[i0 + 2];
+        var fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+        N[i0] += fx; N[i0 + 1] += fy; N[i0 + 2] += fz; N[i1] += fx; N[i1 + 1] += fy; N[i1 + 2] += fz; N[i2] += fx; N[i2 + 1] += fy; N[i2 + 2] += fz;
+      }
     }
     S.mesh.ver++; return S.mesh;
   };
