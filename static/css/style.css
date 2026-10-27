@@ -734,3 +734,55 @@ figure.tr-viz canvas {
   box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px rgba(20,16,10,.16);
 }
 @media (max-width: 760px) { .tr-eq { font-size: 1.15rem; padding: 12px 10px; } }
+
+/* ---------- 3.2 contact preservation: method x task gallery ---------- */
+figure.rv-fig { margin-top: 18px; margin-bottom: 34px; }
+.rv-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.rv-grid {
+  display: grid; grid-template-columns: 112px repeat(4, minmax(0, 1fr)); gap: 10px; min-width: 700px;
+  padding: 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 18px 40px rgba(60,45,20,.06);
+  font-family: var(--sans);
+}
+.rv-corner { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); align-self: end; padding-bottom: 4px; }
+.rv-task { font-size: 14.5px; font-weight: 600; color: #1c1c1e; text-align: center; padding-bottom: 2px; align-self: end; }
+.rv-letter { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted); margin-right: 6px; }
+.rv-method { display: flex; flex-direction: column; justify-content: center; font-size: 14px; line-height: 1.25; color: #1c1c1e; padding-right: 4px; }
+.rv-method b { font-weight: 600; }
+.rv-method span { font-size: 12.5px; color: var(--muted); }
+.rv-method.ours b { background-image: linear-gradient(90deg, #f0702a, #fb8d33); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #f0702a; font-weight: 700; }
+.rv-method.ours span { color: #c25a1f; font-weight: 600; }
+.rv-cell {
+  position: relative; border-radius: 12px; background: #fbfaf7; border: 1px solid #ece6dc; overflow: hidden;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.rv-cell.ours { background: linear-gradient(180deg, #fff6ee 0%, #fffaf5 100%); border-color: #f6cfb2; }
+.rv-cell:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(60,45,20,.10); }
+.rv-img { position: relative; aspect-ratio: 1.42; overflow: hidden; border-radius: 10px 10px 0 0; }
+.rv-img img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transition: transform .45s cubic-bezier(.2,.7,.2,1); transform-origin: var(--rx) var(--ry); }
+.rv-cell:hover .rv-img img { transform: translate(calc(50% - var(--rx)), calc(50% - var(--ry))) scale(2.4); }
+.rv-ring {
+  position: absolute; left: var(--rx); top: var(--ry); width: var(--rr); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 2.5px solid currentColor; box-shadow: 0 0 0 3px rgba(255,255,255,.55);
+  transition: transform .45s cubic-bezier(.2,.7,.2,1), left .45s cubic-bezier(.2,.7,.2,1), top .45s cubic-bezier(.2,.7,.2,1), border-width .45s ease, opacity .45s ease;
+}
+.rv-cell:hover .rv-ring { left: 50%; top: 50%; transform: translate(-50%, -50%) scale(2.4); border-width: 1px; box-shadow: none; opacity: .75; }
+.rv-cell:hover .rv-ring::after { animation: none; }
+.rv-cell.ok .rv-ring { color: #22a861; }
+.rv-cell.bad .rv-ring { color: #e5484d; }
+.rv-ring::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: rvpulse 2.4s ease-out infinite; animation-delay: var(--d); }
+@keyframes rvpulse { 0% { transform: scale(1); opacity: .55; } 70%,100% { transform: scale(1.6); opacity: 0; } }
+.rv-verdict {
+  display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 10px 10px; padding: 4px 0;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; border-radius: 999px;
+}
+.rv-verdict i { font-style: normal; font-weight: 700; }
+.rv-cell.ok .rv-verdict { color: #17683f; background: #edf8f1; }
+.rv-cell.bad .rv-verdict { color: #b4282d; background: #fdeeee; }
+@media (prefers-reduced-motion: reduce) { .rv-ring::after { animation: none; } .rv-cell, .rv-img img { transition: none; } }
+@media (max-width: 760px) {
+  .rv-scroll { margin: 0 -16px; padding: 0 16px; }
+  .rv-grid { grid-template-columns: 86px repeat(4, 150px); min-width: 0; width: max-content; padding: 12px; gap: 8px; }
+  .rv-method { font-size: 12.5px; }
+  .rv-method span { font-size: 11px; }
+}

@@ -144,19 +144,19 @@
   }
 
   /* ---------------- GL ---------------- */
-  var VS = 'attribute vec3 aP; attribute vec3 aN; uniform mat4 uM, uVP; varying vec3 vW, vN;' +
-    'void main(){ vec4 w = uM*vec4(aP,1.0); vW = w.xyz; vN = mat3(uM)*aN; gl_Position = uVP*w; }';
-  var FS = 'precision mediump float; varying vec3 vW, vN; uniform vec3 uEye, uCol, uKeyDir, uBulb; uniform vec4 uMat; uniform float uAlpha, uEmis;' +
-    'void main(){ vec3 N = normalize(vN); vec3 V = normalize(uEye - vW); if (dot(N,V) < 0.0) N = -N;' +
+  var VS = 'attribute vec3 aP; attribute vec3 aN; attribute vec3 aCv; uniform mat4 uM, uVP; varying vec3 vW, vN, vC;' +
+    'void main(){ vec4 w = uM*vec4(aP,1.0); vW = w.xyz; vN = mat3(uM)*aN; vC = aCv; gl_Position = uVP*w; }';
+  var FS = 'precision mediump float; varying vec3 vW, vN, vC; uniform float uVC; uniform vec3 uEye, uCol, uKeyDir, uBulb; uniform vec4 uMat; uniform float uAlpha, uEmis;' +
+    'void main(){ vec3 cB = mix(uCol, vC, uVC); vec3 N = normalize(vN); vec3 V = normalize(uEye - vW); if (dot(N,V) < 0.0) N = -N;' +
     ' vec3 L = normalize(uKeyDir); float wrap = uMat.w;' +                                    // wrap > 0 → skin-like soft diffuse
     ' float d = max((dot(N,L) + wrap) / (1.0 + wrap), 0.0);' +
     ' vec3 Lb = uBulb - vW; float db = length(Lb); Lb /= db; float bl = max(dot(N,Lb),0.0) * 0.0009 / (db*db + 0.0004);' +   // warm light from the glowing bulb
     ' float fill = 0.5 + 0.5*N.y;' +
     ' vec3 H = normalize(L + V); float sp = pow(max(dot(N,H),0.0), uMat.y) * uMat.x;' +
     ' float rim = pow(1.0 - max(dot(N,V),0.0), 3.0) * uMat.z;' +
-    ' vec3 c = uCol * (0.16*fill + 0.95*d) + uCol*vec3(1.0,0.72,0.32)*bl*1.6 + vec3(sp) + vec3(0.55,0.62,0.75)*rim;' +
-    ' if (wrap > 0.0) c += uCol*vec3(0.32,0.08,0.04)*pow(1.0-abs(dot(N,L)),2.0)*0.6;' +          // subsurface tint at the terminator
-    ' c = mix(c, uCol, uEmis);' +
+    ' vec3 c = cB * (0.16*fill + 0.95*d) + cB*vec3(1.0,0.72,0.32)*bl*1.6 + vec3(sp) + vec3(0.55,0.62,0.75)*rim;' +
+    ' if (wrap > 0.0) c += cB*vec3(0.32,0.08,0.04)*pow(1.0-abs(dot(N,L)),2.0)*0.6;' +          // subsurface tint at the terminator
+    ' c = mix(c, cB, uEmis);' +
     ' gl_FragColor = vec4(pow(c, vec3(0.9)) * uAlpha, uAlpha); }';
   var PVS = 'attribute vec3 aP; attribute vec4 aC; attribute float aS; uniform mat4 uVP; uniform float uPx; varying vec4 vC;' +
     'void main(){ gl_Position = uVP*vec4(aP,1.0); gl_PointSize = aS*uPx/gl_Position.w; vC = aC; }';
@@ -189,18 +189,32 @@
       g.bindBuffer(g.ARRAY_BUFFER, c.n); g.bufferData(g.ARRAY_BUFFER, mesh.nrm, g.DYNAMIC_DRAW); c.ver = mesh.ver;
     }
     if (c) return c;
-    var gl = this.gl; c = { p: gl.createBuffer(), n: gl.createBuffer(), i: gl.createBuffer(), cnt: mesh.idx.length };
+    var gl = this.gl; c = { p: gl.createBuffer(), n: gl.createBuffer(), i: gl.createBuffer(), cnt: mesh.idx.length, u32: mesh.idx instanceof Uint32Array };
+    if (mesh.col) { c.c = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, c.c); gl.bufferData(gl.ARRAY_BUFFER, mesh.col, gl.STATIC_DRAW); }
     gl.bindBuffer(gl.ARRAY_BUFFER, c.p); gl.bufferData(gl.ARRAY_BUFFER, mesh.pos, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, c.n); gl.bufferData(gl.ARRAY_BUFFER, mesh.nrm, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, c.i); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.idx, gl.STATIC_DRAW);
     c.ver = mesh.ver; this.cache.set(mesh, c); return c;
   };
   /* scene: {w,h,dpr, VP, eye, key, bulbPos, draws:[{mesh, M, col, mat:[spec,shin,rim,wrap], alpha, emis}], pts:{pos,col,size} } */
+  Renderer.prototype.begin = function (w, h, dpr) {
+    var gl = this.gl; if (!gl) return; this.dpr = dpr;
+    var W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
+    if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; }
+    gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  };
   Renderer.prototype.render = function (S) {
     var gl = this.gl; if (!gl) return null;
-    var W = Math.max(1, Math.round(S.w * S.dpr)), H = Math.max(1, Math.round(S.h * S.dpr));
-    if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; }
-    gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    var W, H;
+    if (S.region) {          // draw into a sub-rectangle of a shared canvas prepared with begin()
+      var rg = S.region, d = this.dpr; W = Math.max(1, Math.round(rg.w * d)); H = Math.max(1, Math.round(rg.h * d));
+      var X0 = Math.round(rg.x * d), Y0 = this.cv.height - Math.round(rg.y * d) - H;
+      gl.enable(gl.SCISSOR_TEST); gl.scissor(X0, Y0, W, H); gl.viewport(X0, Y0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    } else {
+      W = Math.max(1, Math.round(S.w * S.dpr)); H = Math.max(1, Math.round(S.h * S.dpr));
+      if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; }
+      gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    }
     gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     var P = this.prog; gl.useProgram(P.p);
     gl.uniformMatrix4fv(P.u.uVP, false, S.VP); gl.uniform3fv(P.u.uEye, S.eye); gl.uniform3fv(P.u.uKeyDir, S.key); gl.uniform3fv(P.u.uBulb, S.bulbPos);
@@ -209,14 +223,16 @@
       var b = self.buf(d.mesh);
       gl.bindBuffer(gl.ARRAY_BUFFER, b.p); gl.enableVertexAttribArray(P.a.aP); gl.vertexAttribPointer(P.a.aP, 3, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, b.n); gl.enableVertexAttribArray(P.a.aN); gl.vertexAttribPointer(P.a.aN, 3, gl.FLOAT, false, 0, 0);
+      if (b.c) { gl.bindBuffer(gl.ARRAY_BUFFER, b.c); gl.enableVertexAttribArray(P.a.aCv); gl.vertexAttribPointer(P.a.aCv, 3, gl.UNSIGNED_BYTE, true, 0, 0); gl.uniform1f(P.u.uVC, 1); }
+      else { if (P.a.aCv >= 0) { gl.disableVertexAttribArray(P.a.aCv); gl.vertexAttrib3f(P.a.aCv, 1, 1, 1); } gl.uniform1f(P.u.uVC, 0); }
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.i);
       gl.uniformMatrix4fv(P.u.uM, false, d.M); gl.uniform3fv(P.u.uCol, d.col); gl.uniform4fv(P.u.uMat, d.mat);
       gl.uniform1f(P.u.uAlpha, d.alpha == null ? 1 : d.alpha); gl.uniform1f(P.u.uEmis, d.emis || 0);
       if (d.alpha != null && d.alpha < 1) gl.depthMask(false);
-      gl.drawElements(gl.TRIANGLES, b.cnt, gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(gl.TRIANGLES, b.cnt, b.u32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0);
       gl.depthMask(true);
     });
-    gl.disableVertexAttribArray(P.a.aN);
+    gl.disableVertexAttribArray(P.a.aN); if (P.a.aCv >= 0) gl.disableVertexAttribArray(P.a.aCv);
     if (S.dpts && S.dpts.n) {                    // inactive taxels: ordinary depth test
       var Q0 = this.pprog; gl.useProgram(Q0.p);
       gl.uniformMatrix4fv(Q0.u.uVP, false, S.VP); gl.uniform1f(Q0.u.uPx, H * S.proj5 * 0.5); gl.uniform1f(Q0.u.uGlow, 0);
@@ -234,7 +250,7 @@
         var b = self.buf(d.mesh);
         gl.bindBuffer(gl.ARRAY_BUFFER, b.p); gl.vertexAttribPointer(P.a.aP, 3, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.i); gl.uniformMatrix4fv(P.u.uM, false, d.M);
-        gl.drawElements(gl.TRIANGLES, b.cnt, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, b.cnt, b.u32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0);
       });
       gl.colorMask(true, true, true, true);
     }

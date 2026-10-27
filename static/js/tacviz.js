@@ -171,7 +171,7 @@
     var d2 = function (a, b) { return (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]); };
     var sq = function (a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += (a[i] - b[i]) * (a[i] - b[i]); return s; };
     var loss = 0.6 * d2(muR, muH) / (d2(muK, muH) + 1e-6) + 0.4 * sq(uR1, uH1) / (sq(uK1, uH1) + 1e-6);
-    loss = clamp(loss, 0, 1) * 0.94 + 0.02;
+    loss = clamp(loss, 0, 1) * 0.69 + 0.12;     // shown range ≈ 0.81 → 0.12
 
     /* projection (same pose for both fingertips: matched sensors) */
     var pr = Projector(T, phi, psi), P = T.pts, n = P.length, proj = new Array(n);
@@ -305,8 +305,8 @@
   var MAT = {
     skin: { col: [0.88, 0.66, 0.55], mat: [0.12, 18, 0.18, 0.6] },
     nail: { col: [0.95, 0.80, 0.76], mat: [0.5, 60, 0.15, 0.2] },
-    robot: { col: [0.11, 0.115, 0.125], mat: [0.55, 70, 0.55, 0] },
-    robotGrey: { col: [0.36, 0.37, 0.36], mat: [0.4, 50, 0.4, 0] },
+    robot: { col: [0.10, 0.48, 0.30], mat: [0.5, 60, 0.35, 0] },
+    robotGrey: { col: [0.07, 0.36, 0.22], mat: [0.45, 55, 0.3, 0] },
     globe: { col: [1.0, 0.76, 0.14], mat: [0.7, 90, 0.15, 0], emis: 0.32 },
     neck: { col: [0.9, 0.91, 0.92], mat: [0.35, 40, 0.2, 0] },
     holder: { col: [0.14, 0.56, 0.82], mat: [0.55, 60, 0.3, 0] },
@@ -390,7 +390,7 @@
       };
       var dH = delta(CH), dR = delta(CR), dK = delta(CK), L = 0, LK = 1e-12;
       for (i = 0; i < NT; i++) { L += Math.pow(V.len(V.sub(dR[i], dH[i])), 2); LK += Math.pow(V.len(V.sub(dK[i], dH[i])), 2); }
-      loss = clamp(L / LK, 0, 1) * 0.94 + 0.02;
+      loss = clamp(L / LK, 0, 1) * 0.95 + 0.03;
     }
 
     var yaw = t * 0.45 * 2 * Math.PI / 18;   // full 360° orbit at the previous peak angular speed (~40 s per turn)
@@ -535,12 +535,161 @@
     if (st) { ctx.strokeStyle = 'rgba(236,229,217,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(18 * k, H / 2); ctx.lineTo(W - 18 * k, H / 2); ctx.stroke(); }
   };
 
+  /* ============================================================ 3. Contact preservation: 4 tasks x 4 methods
+     Objects are the SAM-3D task meshes, the hand is the Wuji URDF model. All four methods start from the same lifted
+     hand pose, reach for the object, end at their own retargeting result, then lift back. Ring markers only on the
+     fingers that fail (red) or, for correct results, on the contacting fingers (green). */
+  var CMP = { data: null, req: false, objs: {} };
+  var METHODS = [
+    { key: 'ours', name: 'Tac-Retarget (Ours)' },
+    { key: 'nocontact', name: 'Kinematic only' },
+    { key: 'dexpilot', name: 'DexPilot' },
+    { key: 'unidex', name: 'UniDex' }
+  ];
+  var TASKS = ['book', 'bulb', 'ketchup', 'eggroll'];
+  var CMPVIEW = { book: [0, 0], bulb: [0, 0], ketchup: [0, 0], eggroll: [0, 0] };   // per-task camera offsets [azimuth, elevation] in degrees
+  var VERDICT = {
+    ours: { book: 'Correct', bulb: 'Correct', ketchup: 'Correct', eggroll: 'Correct' },
+    nocontact: { book: 'No Contact', bulb: 'No Contact', ketchup: 'No Contact', eggroll: 'No Contact' },
+    dexpilot: { book: 'Penetration', bulb: 'Misplaced', ketchup: 'Penetration', eggroll: 'Correct' },
+    unidex: { book: 'Penetration', bulb: 'Penetration', ketchup: 'Penetration', eggroll: 'Penetration' }
+  };
+  function b64a(s, C) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new C(u.buffer); }
+  function cmpInit() {
+    glInit(); if (CMP.req) return; CMP.req = true;
+    var base = (document.querySelector('script[src*="tacviz.js"]') || {}).src || '';
+    var dir = base ? base.replace(/js\/tacviz\.js.*$/, 'data/') : 'static/data/';
+    fetch(dir + 'retarget_compare.json?v=4').then(function (r) { return r.json(); }).then(function (j) {
+      TASKS.forEach(function (t) {
+        var o = j.tasks[t].obj, p = b64a(o.p, Int16Array), n = b64a(o.n, Int8Array), pos = new Float32Array(p.length), nrm = new Float32Array(n.length);
+        for (var i = 0; i < p.length; i++) { pos[i] = p[i] / 1e4; nrm[i] = n[i] / 127; }
+        CMP.objs[t] = { pos: pos, nrm: nrm, idx: b64a(o.i, o.i32 ? Uint32Array : Uint16Array), col: b64a(o.c, Uint8Array) };
+      });
+      CMP.data = j;
+    });
+  }
+  function interpM(A, B, s) {        // lerp translation, lerp+orthonormalise rotation (row-major 4x4 arrays)
+    var o = M4id(), r, c, R = [];
+    for (r = 0; r < 3; r++) { R.push([]); for (c = 0; c < 3; c++) R[r].push(A[r][c] + (B[r][c] - A[r][c]) * s); }
+    var x = [R[0][0], R[1][0], R[2][0]], y = [R[0][1], R[1][1], R[2][1]];
+    var nx = Math.hypot(x[0], x[1], x[2]); x = [x[0] / nx, x[1] / nx, x[2] / nx];
+    var d = x[0] * y[0] + x[1] * y[1] + x[2] * y[2]; y = [y[0] - d * x[0], y[1] - d * x[1], y[2] - d * x[2]];
+    var ny = Math.hypot(y[0], y[1], y[2]); y = [y[0] / ny, y[1] / ny, y[2] / ny];
+    var z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+    for (r = 0; r < 3; r++) { o[r] = x[r]; o[4 + r] = y[r]; o[8 + r] = z[r]; o[12 + r] = A[r][3] + (B[r][3] - A[r][3]) * s; }
+    return o;
+  }
+  function M4id() { var m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; }
+  function CompareScene(cv) { this.cv = cv; this.cycle = 7.6; this.still = 4; cmpInit(); }
+  CompareScene.prototype.draw = function (t) {
+    var cv = this.cv, ctx = cv.ctx, W = cv.W, H = cv.H, st = cv.stacked;
+    if (!W) return;
+    cmpInit(); bg(ctx, W, H);
+    var k = st ? clamp(W / 420, 0.72, 1.0) : clamp(W / 1000, 0.72, 1.1);
+    var tau = t % this.cycle;
+    var go = ease(seg(tau, 0.7, 2.3)) * (1 - ease(seg(tau, 6.4, 7.4)));
+    var show = ease(seg(tau, 2.4, 2.8)) * (1 - ease(seg(tau, 6.1, 6.4)));
+    var ready = GL.robot && GL.r && CMP.data, m = GL.robot, M4 = window.HandGL && HandGL.M4;
+    var sway = 0.32 * Math.sin(t * 2 * Math.PI / 16);
+    /* layout */
+    var cells = [], lab = st ? 0 : 118 * k, head = 30 * k;
+    if (!st) {
+      var cw = (W - lab) / 4, ch = (H - head) / 4;
+      ctx.font = '600 ' + (11.5 * k) + 'px ' + MONO; ctx.textAlign = 'center';
+      TASKS.forEach(function (tk, c) { ctx.fillStyle = C.text; ctx.fillText(CMP.data ? CMP.data.tasks[tk].label : '', lab + cw * (c + 0.5), 20 * k); });
+      METHODS.forEach(function (me, r) {
+        var y = head + ch * (r + 0.5); ctx.fillStyle = r === 0 ? rgba(C.orange, 1) : C.text; ctx.textAlign = 'center';
+        var parts = me.name === 'Tac-Retarget (Ours)' ? ['Tac-Retarget', '(Ours)'] : me.name === 'Kinematic only' ? ['Kinematic', 'only'] : [me.name];
+        parts.forEach(function (s, i) { ctx.fillText(s, lab / 2, y + (i - (parts.length - 1) / 2) * 15 * k + 4 * k); });
+        TASKS.forEach(function (tk, c) { cells.push({ me: me, r: r, task: tk, x: lab + cw * c, y: head + ch * r, w: cw, h: ch }); });
+      });
+    } else {
+      var bh = H / 4, cw2 = W / 2, th = 24 * k;
+      TASKS.forEach(function (tk, b) {
+        ctx.font = '600 ' + (12 * k) + 'px ' + MONO; ctx.textAlign = 'left'; ctx.fillStyle = C.text;
+        ctx.fillText(CMP.data ? CMP.data.tasks[tk].label : '', 12 * k, bh * b + 17 * k);
+        METHODS.forEach(function (me, r) { cells.push({ me: me, r: r, task: tk, x: cw2 * (r % 2), y: bh * b + th + (bh - th) / 2 * Math.floor(r / 2), w: cw2, h: (bh - th) / 2, small: true }); });
+      });
+    }
+    ctx.textAlign = 'left';
+    var dprC = Math.min(window.devicePixelRatio || 1, 2), overlays = [];
+    if (ready) GL.r.begin(W, H, dprC);
+    cells.forEach(function (cl) {
+      var pad = 4 * k, ok = VERDICT[cl.me.key][cl.task] === 'Correct', ours = cl.r === 0;
+      ctx.beginPath(); rr(ctx, cl.x + pad, cl.y + pad, cl.w - 2 * pad, cl.h - 2 * pad, 10 * k);
+      ctx.fillStyle = ours ? 'rgba(251,141,51,.06)' : 'rgba(255,255,255,.022)'; ctx.fill();
+      ctx.strokeStyle = ours ? 'rgba(251,141,51,.5)' : 'rgba(236,229,217,.07)'; ctx.lineWidth = 1; ctx.stroke();
+      if (cl.small) { ctx.font = '600 ' + (10 * k) + 'px ' + MONO; ctx.fillStyle = ours ? rgba(C.orange, 1) : C.faint; ctx.fillText(cl.me.name, cl.x + pad + 8 * k, cl.y + pad + 15 * k); }
+      if (!ready) return;
+      var T = CMP.data.tasks[cl.task], R = T.methods[cl.me.key], S0 = T.start;
+      var B = interpM(S0.base, R.base, go), q = {};
+      for (var n in R.q) q[n] = S0.q[n] + (R.q[n] - S0.q[n]) * (go * go);
+      var Wl = m.fk(q, B);
+      var vp = { x: cl.x + pad, y: cl.y + pad + (cl.small ? 16 * k : 2 * k), w: cl.w - 2 * pad, h: cl.h - 2 * pad - (cl.small ? 16 * k : 2 * k) - 24 * k };
+      var VO = (window.__CMPOFF || CMPVIEW)[cl.task] || [0, 0], dist = T.dist || 0.4, el = ((T.view ? T.view[1] : 10) + VO[1]) * Math.PI / 180 + 0.12, az = ((T.view ? T.view[0] : 0) + VO[0]) * Math.PI / 180 + sway;
+      var tgt = [0, 0, 0], eye = [dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az)];
+      var proj = M4.persp(0.5, vp.w / vp.h, 0.03, 3), VP = M4.mul(proj, M4.lookAt(eye, tgt, [0, 1, 0]));
+      function toPx(w) {
+        var x = VP[0] * w[0] + VP[4] * w[1] + VP[8] * w[2] + VP[12], y = VP[1] * w[0] + VP[5] * w[1] + VP[9] * w[2] + VP[13], ww = VP[3] * w[0] + VP[7] * w[1] + VP[11] * w[2] + VP[15];
+        return [vp.x + (x / ww + 1) / 2 * vp.w, vp.y + (1 - y / ww) / 2 * vp.h];
+      }
+      var Id = M4.id(), draws = [{ mesh: CMP.objs[cl.task], M: Id, col: [1, 1, 1], mat: [0.18, 30, 0.12, 0] }];
+      Object.keys(m.links).forEach(function (n) {
+        var Mw = Wl[n]; if (!Mw) return; var mt = GREY_LINKS.test(n) ? MAT.robotGrey : MAT.robot;
+        draws.push({ mesh: m.links[n], M: Mw, col: mt.col, mat: mt.mat });
+      });
+      var verdict = VERDICT[cl.me.key][cl.task], bad = R.bad, pts = [], dpts = [], glow = [], marks = [];
+      m.extra.tips.forEach(function (tn, ti) {
+        var Mw = Wl[tn], TX = m.extra.taxels[tn], pd = m.extra.pads[tn], pw3 = M4.xf(Mw, pd.p);
+        var isC = T.contact.indexOf(ti) >= 0, isBad = bad.indexOf(ti) >= 0;
+        var lit = isC && !(isBad && verdict === 'No Contact'), pen = isBad && verdict === 'Penetration';
+        if (isBad) marks.push({ p: toPx(pw3), bad: true }); else if (ok && isC) marks.push({ p: toPx(pw3), bad: false });
+        var amp = lit ? go * go : 0;
+        for (var qq = 0; qq < TX.p.length; qq++) {
+          var lp = TX.p[qq], w = M4.xf(Mw, lp), dx = lp[0] - TX.pad[0], dy = lp[1] - TX.pad[1], dz = lp[2] - TX.pad[2];
+          var v = amp * Math.exp(-(dx * dx + dy * dy + dz * dz) / (2 * 0.0055 * 0.0055));
+          var col = cmap(0.1 + 0.9 * v); if (pen) col = mix(col, C.red, 0.65 * v);
+          (amp > 0 ? pts : dpts).push(w[0], w[1], w[2], col[0] / 255, col[1] / 255, col[2] / 255, amp > 0 ? 0.35 + 0.65 * Math.min(1, v * 2 + 0.25) : 0.85, 0.0017);
+          if (v > 0.3) glow.push(w[0], w[1], w[2], col[0] / 255 * 0.5, col[1] / 255 * 0.5, col[2] / 255 * 0.5, v, 0.0075);
+        }
+      });
+      GL.r.render({ region: vp, xray: true, occl: draws.slice(0, 1), w: vp.w, h: vp.h, dpr: dprC, VP: VP, proj5: proj[5], eye: eye,
+        key: [-0.4, 1.0, 0.8], bulbPos: [0, 0.3, 0.4], draws: draws, dpts: { data: new Float32Array(dpts), n: dpts.length / 8 },
+        pts: { data: new Float32Array(pts), n: pts.length / 8 }, glow: { data: new Float32Array(glow), n: glow.length / 8 } });
+      overlays.push(function () {
+      ctx.save(); ctx.beginPath(); rr(ctx, cl.x + pad, cl.y + pad, cl.w - 2 * pad, cl.h - 2 * pad, 10 * k); ctx.clip();
+      if (show > 0.02) {
+        if (verdict === 'Misplaced' && T.target) T.target.forEach(function (tw) {
+          var a = toPx(tw); ctx.setLineDash([2 * k, 3 * k]); ctx.strokeStyle = 'rgba(236,229,217,' + 0.8 * show + ')'; ctx.lineWidth = 1.2 * k;
+          ctx.beginPath(); ctx.arc(a[0], a[1], 5.5 * k, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        });
+        marks.forEach(function (mk) {
+          var col = mk.bad ? C.red : C.green;
+          ctx.lineWidth = 4 * k; ctx.strokeStyle = 'rgba(14,13,12,' + 0.35 * show + ')'; var rr0 = cl.small ? 0.62 : 1; ctx.beginPath(); ctx.arc(mk.p[0], mk.p[1], 10 * k * rr0, 0, 7); ctx.stroke();
+          ctx.lineWidth = 2.2 * k * rr0; ctx.strokeStyle = rgba(col, show); ctx.beginPath(); ctx.arc(mk.p[0], mk.p[1], 8 * k * rr0, 0, 7); ctx.stroke();
+        });
+      }
+      ctx.restore();
+      var a2 = 0.3 + 0.7 * show, vy = cl.y + cl.h - pad - 13 * k, colv = ok ? C.green : C.red;
+      ctx.font = '600 ' + (10.5 * k) + 'px ' + MONO; var label = (ok ? '✓ ' : '✕ ') + verdict, tw2 = ctx.measureText(label).width;
+      ctx.beginPath(); rr(ctx, cl.x + cl.w / 2 - tw2 / 2 - 8 * k, vy - 12 * k, tw2 + 16 * k, 19 * k, 9.5 * k);
+      ctx.fillStyle = rgba(colv, 0.12 * a2); ctx.fill(); ctx.strokeStyle = rgba(colv, 0.5 * a2); ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = rgba(colv, a2); ctx.textAlign = 'center'; ctx.fillText(label, cl.x + cl.w / 2, vy + 1 * k); ctx.textAlign = 'left';
+      });
+    });
+    if (ready) { ctx.drawImage(GL.r.cv, 0, 0, W, H); overlays.forEach(function (f) { f(); }); }
+    if (!ready) {
+      ctx.font = (11 * k) + 'px ' + MONO; ctx.fillStyle = C.faint; ctx.textAlign = 'center';
+      ctx.fillText(GL.failed ? 'WebGL unavailable' : 'loading hand and object models…', W / 2, H / 2); ctx.textAlign = 'left';
+    }
+  };
+
   /* ------------------------------------------------------------ canvas plumbing */
   function mount(el) {
     var kind = el.getAttribute('data-tr');
     var cv = { el: el, ctx: el.getContext('2d'), W: 0, H: 0, stacked: false };
-    var scene = kind === 'graph' ? new GraphScene(cv) : new ContactScene(cv);
-    var aspD = kind === 'graph' ? 2.1 : 2.3, aspM = kind === 'graph' ? 1.75 : 1.62;
+    var scene = kind === 'graph' ? new GraphScene(cv) : kind === 'compare' ? new CompareScene(cv) : new ContactScene(cv);
+    var aspD = kind === 'graph' ? 2.1 : kind === 'compare' ? 1.32 : 2.3, aspM = kind === 'graph' ? 1.75 : kind === 'compare' ? 2.6 : 1.62;
     var t = 0, last = null, raf = 0, vis = false, frozen = false;
     function resize() {
       var w = el.clientWidth; if (!w) return;
@@ -552,7 +701,7 @@
     }
     function loop(now) {
       if (last !== null && !frozen) t += Math.min(0.05, (now - last) / 1000);
-      last = now; scene.draw(t);
+      last = now; if (!frozen) scene.draw(t);
       if (vis) raf = requestAnimationFrame(loop); else { raf = 0; last = null; }
     }
     resize();

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- 字体：正文 Source Sans 3，标题 Newsreader（衬线），图注用等宽字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=42">
+  <link rel="stylesheet" href="static/css/style.css?v=45">
 </head>
 <body>
 
@@ -391,6 +391,86 @@
   <!-- ---------- 3.2 ---------- -->
   <h3>3.2 Tac-Retarget vs. kinematic retargeting</h3>
   <h4 class="mini mini-env">Contact preservation <span class="env env-sim"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Simulation</span></h4>
+  <!-- 方法对比图（来自论文 retarget_vis）：图片在 static/images/retarget/；每格的圈由 style 里的 --rx/--ry（圆心）和 --rr（直径）控制 -->
+  <figure class="fig wide rv-fig">
+  <div class="rv-scroll">
+  <div class="rv-grid">
+    <div class="rv-corner">Method</div>
+    <div class="rv-task"><span class="rv-letter">a</span>Flip Book</div>
+    <div class="rv-task"><span class="rv-letter">b</span>Screw Bulb</div>
+    <div class="rv-task"><span class="rv-letter">c</span>Apply Sauce</div>
+    <div class="rv-task"><span class="rv-letter">d</span>Grasp Egg Roll</div>
+    <div class="rv-method ours"><b>Tac-Retarget</b><span>Ours</span></div>
+    <div class="rv-cell ours ok" style="--rx:33.2%;--ry:46.7%;--rr:18.5%;--d:0ms">
+      <div class="rv-img"><img src="static/images/retarget/flip_book_ours.webp" alt="Flip Book, Tac-Retarget (Ours): Correct" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✓</i>Correct</div>
+    </div>
+    <div class="rv-cell ours ok" style="--rx:31.3%;--ry:63.3%;--rr:19.9%;--d:45ms">
+      <div class="rv-img"><img src="static/images/retarget/screw_bulb_ours.webp" alt="Screw Bulb, Tac-Retarget (Ours): Correct" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✓</i>Correct</div>
+    </div>
+    <div class="rv-cell ours ok" style="--rx:58.1%;--ry:42.0%;--rr:17.7%;--d:90ms">
+      <div class="rv-img"><img src="static/images/retarget/apply_sauce_ours.webp" alt="Apply Sauce, Tac-Retarget (Ours): Correct" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✓</i>Correct</div>
+    </div>
+    <div class="rv-cell ours ok" style="--rx:52.8%;--ry:58.5%;--rr:23.0%;--d:135ms">
+      <div class="rv-img"><img src="static/images/retarget/grasp_egg_roll_ours.webp" alt="Grasp Egg Roll, Tac-Retarget (Ours): Correct" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✓</i>Correct</div>
+    </div>
+    <div class="rv-method"><b>Tac-Retarget</b><span>kinematic only</span></div>
+    <div class="rv-cell bad" style="--rx:33.8%;--ry:46.7%;--rr:18.5%;--d:180ms">
+      <div class="rv-img"><img src="static/images/retarget/flip_book_kinematic.webp" alt="Flip Book, Tac-Retarget (kinematic only): No Contact" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>No Contact</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:31.2%;--ry:61.8%;--rr:19.9%;--d:225ms">
+      <div class="rv-img"><img src="static/images/retarget/screw_bulb_kinematic.webp" alt="Screw Bulb, Tac-Retarget (kinematic only): No Contact" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>No Contact</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:54.4%;--ry:39.4%;--rr:17.7%;--d:270ms">
+      <div class="rv-img"><img src="static/images/retarget/apply_sauce_kinematic.webp" alt="Apply Sauce, Tac-Retarget (kinematic only): No Contact" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>No Contact</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:48.1%;--ry:64.1%;--rr:23.0%;--d:315ms">
+      <div class="rv-img"><img src="static/images/retarget/grasp_egg_roll_kinematic.webp" alt="Grasp Egg Roll, Tac-Retarget (kinematic only): No Contact" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>No Contact</div>
+    </div>
+    <div class="rv-method"><b>DexPilot</b></div>
+    <div class="rv-cell bad" style="--rx:48.1%;--ry:60.6%;--rr:18.5%;--d:360ms">
+      <div class="rv-img"><img src="static/images/retarget/flip_book_dexpilot.webp" alt="Flip Book, DexPilot: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:34.2%;--ry:69.3%;--rr:19.9%;--d:405ms">
+      <div class="rv-img"><img src="static/images/retarget/screw_bulb_dexpilot.webp" alt="Screw Bulb, DexPilot: Misplaced" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Misplaced</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:54.4%;--ry:65.1%;--rr:17.7%;--d:450ms">
+      <div class="rv-img"><img src="static/images/retarget/apply_sauce_dexpilot.webp" alt="Apply Sauce, DexPilot: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+    <div class="rv-cell ok" style="--rx:48.1%;--ry:69.9%;--rr:23.0%;--d:495ms">
+      <div class="rv-img"><img src="static/images/retarget/grasp_egg_roll_dexpilot.webp" alt="Grasp Egg Roll, DexPilot: Correct" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✓</i>Correct</div>
+    </div>
+    <div class="rv-method"><b>UniDex</b></div>
+    <div class="rv-cell bad" style="--rx:48.1%;--ry:55.9%;--rr:18.5%;--d:540ms">
+      <div class="rv-img"><img src="static/images/retarget/flip_book_unidex.webp" alt="Flip Book, UniDex: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:43.9%;--ry:69.6%;--rr:19.9%;--d:585ms">
+      <div class="rv-img"><img src="static/images/retarget/screw_bulb_unidex.webp" alt="Screw Bulb, UniDex: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:56.0%;--ry:58.9%;--rr:17.7%;--d:630ms">
+      <div class="rv-img"><img src="static/images/retarget/apply_sauce_unidex.webp" alt="Apply Sauce, UniDex: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+    <div class="rv-cell bad" style="--rx:41.9%;--ry:72.4%;--rr:23.0%;--d:675ms">
+      <div class="rv-img"><img src="static/images/retarget/grasp_egg_roll_unidex.webp" alt="Grasp Egg Roll, UniDex: Penetration" loading="lazy" width="760" height="535"><i class="rv-ring" aria-hidden="true"></i></div>
+      <div class="rv-verdict"><i>✕</i>Penetration</div>
+    </div>
+  </div>
+  </div>
+  </figure>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Method</th><th>Contact error (mm) ↓</th></tr></thead>
@@ -433,7 +513,7 @@
 </footer>
 
 <script defer src="static/js/main.js?v=31"></script>
-<script defer src="static/js/handgl.js?v=4"></script>
-<script defer src="static/js/tacviz.js?v=13"></script>
+<script defer src="static/js/handgl.js?v=6"></script>
+<script defer src="static/js/tacviz.js?v=19"></script>
 </body>
 </html>
