@@ -707,3 +707,7 @@ figure.fig figcaption b, .fig-row figcaption b { font-weight: 600; }
   .db-tags { flex-direction: column; align-items: flex-start; gap: 6px; }
   .db-tag { font-size: 11px; padding: 3px 9px; }
 }
+
+/* "contact-rich" pill: warm touch-orange */
+.db-tag.contact { color: #b4501b; border-color: #f2d5bf; background: #fdf3ea; }
+.tdot { width: 7px; height: 7px; border-radius: 50%; background: #f0702a; flex-shrink: 0; }
