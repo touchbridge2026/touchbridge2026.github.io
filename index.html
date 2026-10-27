@@ -12,8 +12,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=34">
+  <!-- 字体：正文 Source Sans 3，标题 Newsreader（衬线），图注用等宽字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/style.css?v=36">
 </head>
 <body>
 
@@ -147,37 +148,54 @@
      ===================================================================== -->
 <section id="motivation">
   <p class="kicker">1 · Motivation</p>
-  <h2>Why touch?</h2>
+  <h2>Learning from human data: faithful to contact, efficient to scale</h2>
 
   <p>
-    Building foundation models for contact-rich dexterous manipulation requires large amounts of demonstrations that
-    capture not only hand motion, but also physical interaction. Collecting them on real robots through teleoperation is
-    slow and labor-intensive. Human demonstrations are far cheaper — yet turning them into robot-executable training data
-    faces two challenges.
+    Human demonstrations are a fast and scalable source of manipulation experience. To train contact-rich dexterous
+    policies, they must be turned into robot data that is both <strong>faithful</strong>, reproducing the demonstrated
+    contacts, and <strong>efficient</strong>, scaling to large and diverse datasets. Existing approaches give up one
+    for the other.
   </p>
 
-  <h3>1.1 Kinematics alone does not preserve contact</h3>
+  <!-- 三种思路的对比卡片：改文字直接改这里 -->
+  <div class="tradeoff">
+    <div class="tcard">
+      <div class="tcard-h">Kinematic retargeting</div>
+      <div class="tchips"><span class="tchip no"><b>✕</b>Contact</span><span class="tchip ok"><b>✓</b>Scalable</span></div>
+      <p>Matches hand poses or fingertip positions. Fast, but contacts slip, distort or break.</p>
+    </div>
+    <div class="tcard">
+      <div class="tcard-h">Object- / simulation-based transfer</div>
+      <div class="tchips"><span class="tchip ok"><b>✓</b>Contact</span><span class="tchip no"><b>✕</b>Scalable</span></div>
+      <p>Relies on object meshes, pose estimates or simulated refinement. Faithful, but costly for every new object and task.</p>
+    </div>
+    <div class="tcard ours">
+      <div class="tcard-h"><span class="t-touch">Touch</span><span class="t-bridge">Bridge</span></div>
+      <div class="tchips"><span class="tchip ok"><b>✓</b>Contact</span><span class="tchip ok"><b>✓</b>Scalable</span></div>
+      <p>Uses measured fingertip touch as the correspondence between human and robot. No object model, no simulator.</p>
+    </div>
+  </div>
+
+  <h3>1.1 Faithful: kinematics alone does not preserve contact</h3>
   <p>
     Conventional retargeting matches hand poses, fingertip positions or hand-centric vectors. This works for free-space
-    motion, but it does not explicitly model contact: a fingertip may slide off its support region, relations among
-    simultaneous contacts can be distorted, or contact may be lost altogether. A motion that looks kinematically
-    plausible can still be physically useless.
+    motion, but fixed fingertip targets can push a contacting finger off its support region, distort the relations among
+    simultaneous contacts, or break contact altogether. Kinematically plausible motion can still be physically ineffective.
   </p>
 
-  <h3>1.2 Physical fidelity should not cost scalability</h3>
+  <h3>1.2 Efficient: fidelity should not cost scalability</h3>
   <p>
-    Object-aware pipelines bring in hand–object geometry or physics, and other approaches refine trajectories with
+    Object-aware methods add hand–object geometry or physics constraints, and other pipelines refine trajectories through
     simulation and reinforcement learning. They improve physical consistency, but need object meshes, pose estimation,
-    environment reconstruction or simulated rollouts — overhead that is hard to scale to large, diverse human datasets.
+    environment reconstruction or simulated rollouts, which is overhead that does not scale with large human datasets.
   </p>
 
-  <h3>1.3 Our key insight</h3>
+  <h3>1.3 Key insight: contact is the bridge</h3>
   <p class="callout">Physical contact itself provides a natural correspondence across embodiments.</p>
   <p>
-    Tactile sensing directly tells us <em>which</em> fingertips are in contact, <em>where</em> contact occurs and
-    <em>how strongly</em> each region is loaded. Because these signals are measured during the human demonstration, they
-    provide interaction constraints without reconstructing the object or running a simulator — addressing both
-    challenges at once.
+    Tactile sensing directly reveals <em>which</em> fingertips touch, <em>where</em> contact occurs and <em>how strongly</em>
+    each region is loaded. Measured during the human demonstration, these signals constrain the transfer without object
+    reconstruction or simulation, keeping it faithful to contact and efficient at the same time.
   </p>
 
   <h3>1.4 Comparison with prior frameworks</h3>
