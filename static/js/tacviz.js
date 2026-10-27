@@ -393,7 +393,7 @@
       loss = clamp(L / LK, 0, 1) * 0.94 + 0.02;
     }
 
-    var yaw = 0.45 * Math.sin(t * 2 * Math.PI / 18);
+    var yaw = t * 0.45 * 2 * Math.PI / 18;   // full 360° orbit at the previous peak angular speed (~40 s per turn)
     function panel(p, m, S, Cs, robot) {
       var M4 = HandGL.M4, asp = p.w / p.h;
       var tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
