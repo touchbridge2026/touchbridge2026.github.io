@@ -291,152 +291,168 @@
   };
 
   /* ============================================================ 2. Contact-graph preservation
-     3-D scene: point-cloud object, taxel-cloud fingertip sensors, glowing contact-graph edges. */
+     Real 3-D scene rendered with WebGL (handgl.js): a MANO-proportioned human hand and the Wuji dexterous hand
+     (meshes + joint tree from its URDF) grasp a light bulb. Grasps were solved offline: the human grasp by
+     optimisation, the robot grasp by retargeting the robot fingertip pads onto the human contacts. */
   var V = {
     add: function (a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; },
     sub: function (a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; },
     mul: function (a, s) { return [a[0] * s, a[1] * s, a[2] * s]; },
-    dot: function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; },
-    cross: function (a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; },
-    norm: function (a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
     len: function (a) { return Math.hypot(a[0], a[1], a[2]); }
   };
-  /* compact fingertip sensor: full capsule ring so it reads from any view angle */
-  var TIP2 = (function () {
-    var R = 1, L = 1.6, s = 0.2, pts = [], Lm = L + Math.PI * R / 2, row = 0;
-    for (var u = 0.0; u <= Lm + 1e-6; u += s, row++) {
-      var y, r, ny;
-      if (u <= L) { y = u; r = R; ny = 0; } else { var a = (u - L) / R; y = L + R * Math.sin(a); r = R * Math.cos(a); ny = Math.sin(a); }
-      var n = Math.max(1, Math.round(2 * Math.PI * r / s)), off = (row % 2) * 0.5, nr = Math.sqrt(Math.max(0, 1 - ny * ny));
-      for (var j = 0; j < n; j++) {
-        var th = (j + off) / n * 2 * Math.PI;
-        pts.push({ p: [r * Math.sin(th), y, r * Math.cos(th)], n: [nr * Math.sin(th), ny, nr * Math.cos(th)] });
-      }
-    }
-    return { pts: pts, pad: [0, 1.35, 1] };     // pad = contact location on the fingertip (local frame)
-  })();
-  var OBJR = [0.6, 0.82, 0.6];
-  var OBJPTS = (function () {                     // Fibonacci point cloud on an ellipsoid
-    var N = 760, out = [], ga = Math.PI * (3 - Math.sqrt(5));
-    for (var i = 0; i < N; i++) {
-      var y = 1 - (i + 0.5) / N * 2, r = Math.sqrt(1 - y * y), th = ga * i;
-      var p = [Math.cos(th) * r * OBJR[0], y * OBJR[1], Math.sin(th) * r * OBJR[2]];
-      out.push({ p: p, n: V.norm([p[0] / (OBJR[0] * OBJR[0]), p[1] / (OBJR[1] * OBJR[1]), p[2] / (OBJR[2] * OBJR[2])]) });
-    }
-    return out;
-  })();
-  function objPoint(az, el) {
-    var a = az * Math.PI / 180, e = el * Math.PI / 180;
-    var p = [OBJR[0] * Math.cos(e) * Math.cos(a), OBJR[1] * Math.sin(e), OBJR[2] * Math.cos(e) * Math.sin(a)];
-    return { p: p, n: V.norm([p[0] / (OBJR[0] * OBJR[0]), p[1] / (OBJR[1] * OBJR[1]), p[2] / (OBJR[2] * OBJR[2])]) };
+  var BULB = { R: 0.032, gy: 0, neckY0: -0.046, neckY1: -0.0255, neckR1: 0.0196, baseR: 0.0225, baseY0: -0.094, baseY1: -0.046 };
+  var GREY_LINKS = /finger1_link4|finger[2-5]_link1$/;
+  var MAT = {
+    skin: { col: [0.88, 0.66, 0.55], mat: [0.12, 18, 0.18, 0.6] },
+    nail: { col: [0.95, 0.80, 0.76], mat: [0.5, 60, 0.15, 0.2] },
+    robot: { col: [0.11, 0.115, 0.125], mat: [0.55, 70, 0.55, 0] },
+    robotGrey: { col: [0.36, 0.37, 0.36], mat: [0.4, 50, 0.4, 0] },
+    globe: { col: [1.0, 0.76, 0.14], mat: [0.7, 90, 0.15, 0], emis: 0.32 },
+    neck: { col: [0.9, 0.91, 0.92], mat: [0.35, 40, 0.2, 0] },
+    holder: { col: [0.14, 0.56, 0.82], mat: [0.55, 60, 0.3, 0] },
+    band: { col: [0.06, 0.3, 0.45], mat: [0.3, 30, 0.2, 0] }
+  };
+  var CAM = window.__CAM || { tgt: [-0.05, 0.016, 0.012], d: 0.5, dm: 0.6, el: 0.55, az: -1.95 };
+  var GL = { r: null, human: null, robot: null, bulb: null, failed: false, req: false };
+  function glInit() {
+    if (GL.req || !window.HandGL) return; GL.req = true;
+    try { GL.r = new HandGL.Renderer(); if (!GL.r.gl) throw 0; } catch (e) { GL.failed = true; return; }
+    GL.bulb = HandGL.bulbParts(BULB);
+    var base = (document.querySelector('script[src*="tacviz.js"]') || {}).src || '';
+    var dir = base ? base.replace(/js\/tacviz\.js.*$/, 'data/') : 'static/data/';
+    HandGL.load(dir + 'hand_human.json?v=2').then(function (m) { GL.human = m; });
+    HandGL.load(dir + 'hand_wuji.json?v=2').then(function (m) { GL.robot = m; });
   }
-  /* tactile-activated contacts (az: around the vertical axis, 90° = toward the viewer) */
-  var GC = [
-    { h: 'L', az: 152, el: -30, up: [0.6, 1, 0.3] },     // left thumb
-    { h: 'L', az: 196, el: 14, up: [0.2, 1, -0.3] },     // left index
-    { h: 'R', az: 34, el: -32, up: [-0.6, 1, 0.3] },     // right thumb
-    { h: 'R', az: -6, el: 6, up: [-0.2, 1, 0.1] },       // right index
-    { h: 'R', az: -38, el: 40, up: [-0.4, 1, -0.4] }     // right middle
-  ];
-  /* kinematic-only robot error per contact: dn = along surface normal (+ off / − into), dt = slide along the finger */
-  var KIN2 = [{ dn: 0, dt: 0 }, { dn: 0.2, dt: 0.02, lost: true }, { dn: 0.02, dt: -0.17 }, { dn: 0, dt: 0 }, { dn: -0.1, dt: 0.03, pen: true }];
+  function lerpQ(a, b, t) { var o = {}; for (var n in a) o[n] = a[n] + ((b[n] == null ? a[n] : b[n]) - a[n]) * t; return o; }
+  function scaleQ(a, s, lim) { var o = {}; for (var n in a) o[n] = a[n] * s; return o; }
+  function toM(B) { var m = new Float32Array(16); for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) m[c * 4 + r] = B[r][c]; return m; }
+  function shiftM(M, d) { var o = new Float32Array(M); o[12] += d[0]; o[13] += d[1]; o[14] += d[2]; return o; }
+  function lerpM(A, B, t) { var o = new Float32Array(16); for (var i = 0; i < 16; i++) o[i] = A[i] + (B[i] - A[i]) * t; return o; }
 
-  function GraphScene(cv) { this.cv = cv; this.cycle = 9.4; this.still = 6.2; }
+  function GraphScene(cv) { this.cv = cv; this.cycle = 9.4; this.still = 6.2; glInit(); }
   GraphScene.prototype.draw = function (t) {
     var cv = this.cv, ctx = cv.ctx, W = cv.W, H = cv.H, st = cv.stacked;
     if (!W) return;
+    glInit();
     bg(ctx, W, H);
     var k = st ? clamp(W / 420, 0.78, 1.1) : clamp(W / 1000, 0.75, 1.2);
     var tau = t % this.cycle;
     var reach = ease(seg(tau, 0.15, 1.3)) * (1 - ease(seg(tau, 8.4, 9.2)));
     var align = ease(seg(tau, 3.7, 5.4));
-    var yaw = 0.55 * Math.sin(t * 2 * Math.PI / 16) - 0.08, pitch = 0.3;
     var pH = st ? { x: 0, y: 0, w: W, h: H / 2 } : { x: 0, y: 0, w: W / 2, h: H };
     var pR = st ? { x: 0, y: H / 2, w: W, h: H / 2 } : { x: W / 2, y: 0, w: W / 2, h: H };
-    var acts = GC.map(function (_, i) { return ease(seg(tau, 1.2 + 0.2 * i, 1.55 + 0.2 * i)) * (1 - ease(seg(tau, 8.0, 8.5))); });
+    var ready = GL.human && GL.robot && GL.r;
+    var NT = 4;
+    var acts = [0, 1, 2, 3].map(function (i) { return ease(seg(tau, 1.2 + 0.2 * i, 1.55 + 0.2 * i)) * (1 - ease(seg(tau, 8.0, 8.5))); });
 
-    /* contact frames (world) for one embodiment */
-    function contacts(robot) {
-      return GC.map(function (c, i) {
-        var o = objPoint(c.az, c.el), n = o.n;
-        var up = V.norm(c.up), d = V.norm(V.sub(up, V.mul(n, V.dot(up, n))));      // finger axis, tangent to the surface
-        var e = robot ? KIN2[i] : { dn: 0, dt: 0 }, f = robot ? 1 - align : 0;
-        var dn = e.dn * f + 0.32 * (1 - reach), p = V.add(V.add(o.p, V.mul(n, dn)), V.mul(d, e.dt * f));
-        return { p: p, n: n, d: d, lost: !!(robot && e.lost && f > 0.12), pen: !!(robot && e.pen && f > 0.12) };
-      });
-    }
-    var CH = contacts(false), CR = contacts(true);
-    var a0 = align; align = 0; var CK = contacts(true); align = a0;
-
-    /* contact graph + distance-weighted Laplacian loss */
-    var edges = [];
-    for (var i = 0; i < GC.length; i++) for (var j = i + 1; j < GC.length; j++)
-      edges.push({ u: i, v: j, cross: GC[i].h !== GC[j].h, t0: 1.55 + 0.2 * Math.max(i, j) + 0.08 * Math.min(i, j) });
-    function delta(Cs) {
-      return GC.map(function (_, u) {
-        var d = [0, 0, 0], ws = 1e-6;
-        edges.forEach(function (e) {
-          if (e.u !== u && e.v !== u) return;
-          var v = e.u === u ? e.v : e.u, w = 1 / (V.len(V.sub(CH[u].p, CH[v].p)) + 0.05); ws += w;
-          d = V.add(d, V.mul(V.sub(Cs[u].p, Cs[v].p), w));
-        });
-        return V.mul(d, 1 / ws);
-      });
-    }
-    var dH = delta(CH), dR = delta(CR), dK = delta(CK), L = 0, LK = 1e-6;
-    for (i = 0; i < GC.length; i++) { L += Math.pow(V.len(V.sub(dR[i], dH[i])), 2); LK += Math.pow(V.len(V.sub(dK[i], dH[i])), 2); }
-    var loss = clamp(L / LK, 0, 1) * 0.94 + 0.02;
-
-    function panel(p, Cs, robot) {
-      var F = Math.min(p.w * 0.9, p.h) * (st ? 0.4 : 0.37), cx = p.x + p.w / 2, cy = p.y + p.h * 0.5, D = 4.2;
-      var cy_ = Math.cos(yaw), sy_ = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-      function rot(v) { var x1 = v[0] * cy_ + v[2] * sy_, z1 = -v[0] * sy_ + v[2] * cy_; return [x1, v[1] * cp - z1 * sp, v[1] * sp + z1 * cp]; }
-      function proj(v) { var r = rot(v), s = D / (D - r[2]); return [cx + r[0] * F * s, cy - r[1] * F * s, r[2], s]; }
-      /* soft volume behind the object point cloud */
-      var vg = ctx.createRadialGradient(cx - F * 0.15, cy - F * 0.25, F * 0.05, cx, cy, F * 0.95);
-      vg.addColorStop(0, 'rgba(236,212,176,.10)'); vg.addColorStop(0.7, 'rgba(236,212,176,.035)'); vg.addColorStop(1, 'rgba(236,212,176,0)');
-      ctx.fillStyle = vg; ctx.beginPath(); ctx.ellipse(cx, cy, F * 0.72, F * 0.92, 0, 0, 7); ctx.fill();
-      var dots = [];
-      /* object point cloud */
-      OBJPTS.forEach(function (o) {
-        var q = proj(o.p), f = rot(o.n)[2];
-        dots.push({ x: q[0], y: q[1], z: q[2], r: (0.9 + 0.7 * clamp(f, 0, 1)) * k * q[3], c: [236, 212, 176], a: 0.1 + 0.32 * clamp((f + 0.3) / 1.3, 0, 1), g: 0 });
-      });
-      /* fingertip sensors */
-      var tipS = robot ? 0.142 : 0.125, nodes = [];
-      Cs.forEach(function (c, ci) {
-        var ez = V.mul(c.n, -1), ey = c.d, ex = V.cross(ey, ez), pad = TIP2.pad;
-        var sig = 0.55, amp = acts[ci] * (c.lost ? 0 : 1);
-        TIP2.pts.forEach(function (tp) {
-          var l = V.sub(tp.p, pad), w = V.add(c.p, V.mul(V.add(V.add(V.mul(ex, l[0]), V.mul(ey, l[1])), V.mul(ez, l[2])), tipS));
-          var nw = V.add(V.add(V.mul(ex, tp.n[0]), V.mul(ey, tp.n[1])), V.mul(ez, tp.n[2]));
-          var q = proj(w), f = rot(nw)[2];
-          if (f < -0.25) return;
-          var dd = V.len(V.sub(tp.p, pad)), v = amp * Math.exp(-dd * dd / (2 * sig * sig));
-          var sh = 0.35 + 0.65 * clamp(f, 0, 1), col = cmap(0.08 + 0.92 * v);
-          if (c.pen) col = mix(col, C.red, 0.55 * v);
-          dots.push({ x: q[0], y: q[1], z: q[2], r: k * q[3] * (robot ? 1.75 : 1.6) * (0.65 + 0.35 * sh) * (1 + 0.6 * v),
-            c: [col[0] * (0.55 + 0.45 * sh), col[1] * (0.55 + 0.45 * sh), col[2] * (0.55 + 0.45 * sh)], a: clamp((f + 0.25) / 0.5, 0, 1) * (0.5 + 0.5 * Math.max(sh, v)), g: v });
-        });
-        var q = proj(c.p); nodes.push({ x: q[0], y: q[1], z: q[2], c: c });
-      });
-      dots.sort(function (a, b) { return a.z - b.z; });
-      ctx.globalCompositeOperation = 'lighter';
-      dots.forEach(function (d) { if (d.g > 0.25) { ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 4.2, 0, 7); ctx.fillStyle = rgba(d.c, 0.06 * d.g); ctx.fill(); } });
-      ctx.globalCompositeOperation = 'source-over';
-      dots.forEach(function (d) { ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 7); ctx.fillStyle = rgba(d.c, d.a); ctx.fill(); });
-
-      /* target (human) graph ghosted on the robot panel */
+    /* poses */
+    function pose(m, robot, alignT) {
+      var g = m.extra.grasp, Bg = toM(g.base), q = g.q;
       if (robot) {
-        var gh = CH.map(function (c) { return proj(c.p); });
+        var kq = m.extra.kin.q, kB = toM(m.extra.kin.base);
+        q = lerpQ(kq, g.q, alignT); Bg = lerpM(kB, Bg, alignT);
+      }
+      /* collision-free approach (checked offline): hand descends from 10 cm above while the fingers close late */
+      var open = scaleQ(g.q, 0.6);
+      var qq = lerpQ(open, q, reach * reach), lift = (1 - reach);
+      var B = shiftM(Bg, [0, 0.1 * lift, 0]);
+      return { W: m.fk(qq, B), q: qq };
+    }
+    function pads(m, Wl) {
+      return m.extra.tips.map(function (tn) {
+        var M = Wl[tn], P = m.extra.pads[tn];
+        return { p: HandGL.M4.xf(M, P.p), n: HandGL.M4.xv(M, P.n) };
+      });
+    }
+    var sH, sR, sK, CH, CR, CK;
+    if (ready) {
+      sH = pose(GL.human, false, 1); sR = pose(GL.robot, true, align);
+      var a0 = reach; reach = 1; sK = pose(GL.robot, true, 0); reach = a0;
+      CH = pads(GL.human, sH.W); CR = pads(GL.robot, sR.W); CK = pads(GL.robot, sK.W);
+    }
+    function gap(c) { return V.len(V.sub(c.p, [0, BULB.gy, 0])) - BULB.R; }
+
+    /* contact graph over the four contacting pads + distance-weighted Laplacian loss (Eq. graph) */
+    var edges = [];
+    for (var i = 0; i < NT; i++) for (var j = i + 1; j < NT; j++) edges.push({ u: i, v: j, t0: 1.55 + 0.2 * j + 0.08 * i });
+    var loss = 0;
+    if (ready) {
+      var delta = function (Cs) {
+        return [0, 1, 2, 3].map(function (u) {
+          var d = [0, 0, 0], ws = 1e-9;
+          edges.forEach(function (e) {
+            if (e.u !== u && e.v !== u) return;
+            var v = e.u === u ? e.v : e.u, w = 1 / (V.len(V.sub(CH[u].p, CH[v].p)) + 0.004); ws += w;
+            d = V.add(d, V.mul(V.sub(Cs[u].p, Cs[v].p), w));
+          });
+          return V.mul(d, 1 / ws);
+        });
+      };
+      var dH = delta(CH), dR = delta(CR), dK = delta(CK), L = 0, LK = 1e-12;
+      for (i = 0; i < NT; i++) { L += Math.pow(V.len(V.sub(dR[i], dH[i])), 2); LK += Math.pow(V.len(V.sub(dK[i], dH[i])), 2); }
+      loss = clamp(L / LK, 0, 1) * 0.94 + 0.02;
+    }
+
+    var yaw = 0.5 * Math.sin(t * 2 * Math.PI / 18);
+    function panel(p, m, S, Cs, robot) {
+      var M4 = HandGL.M4, asp = p.w / p.h;
+      var tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
+      var eye = [tgt[0] + dist * Math.cos(el) * Math.sin(az), tgt[1] + dist * Math.sin(el), tgt[2] + dist * Math.cos(el) * Math.cos(az)];
+      var proj = M4.persp(0.5, asp, 0.05, 2), view = M4.lookAt(eye, tgt, [0, 1, 0]), VP = M4.mul(proj, view);
+      function toPx(w) {
+        var x = VP[0] * w[0] + VP[4] * w[1] + VP[8] * w[2] + VP[12], y = VP[1] * w[0] + VP[5] * w[1] + VP[9] * w[2] + VP[13], ww = VP[3] * w[0] + VP[7] * w[1] + VP[11] * w[2] + VP[15];
+        return [p.x + (x / ww + 1) / 2 * p.w, p.y + (1 - y / ww) / 2 * p.h, ww];
+      }
+      /* warm glow of the bulb (2-D, behind the WebGL layer) */
+      var gq = toPx([0, BULB.gy, 0]), gR = BULB.R * proj[5] * p.h / 2 / gq[2];
+      var gl2 = ctx.createRadialGradient(gq[0], gq[1], gR * 0.5, gq[0], gq[1], gR * 3.2);
+      gl2.addColorStop(0, 'rgba(255,190,60,.22)'); gl2.addColorStop(1, 'rgba(255,190,60,0)');
+      ctx.fillStyle = gl2; ctx.fillRect(p.x, p.y, p.w, p.h);
+      if (!ready) return null;
+      var draws = [], Id = M4.id(), B = GL.bulb;
+      draws.push({ mesh: B.holder, M: Id, col: MAT.holder.col, mat: MAT.holder.mat });
+      draws.push({ mesh: B.band, M: Id, col: MAT.band.col, mat: MAT.band.mat });
+      draws.push({ mesh: B.neck, M: Id, col: MAT.neck.col, mat: MAT.neck.mat });
+      draws.push({ mesh: B.globe, M: Id, col: MAT.globe.col, mat: MAT.globe.mat, emis: MAT.globe.emis });
+      if (m.skin) {
+        draws.push({ mesh: m.skinned(S.W), M: Id, col: MAT.skin.col, mat: MAT.skin.mat });
+        Object.keys(m.nails).forEach(function (n) { if (S.W[n]) draws.push({ mesh: m.nails[n], M: S.W[n], col: MAT.nail.col, mat: MAT.nail.mat }); });
+      }
+      Object.keys(m.links).forEach(function (n) {
+        var Mw = S.W[n]; if (!Mw) return;
+        var mt = robot ? (GREY_LINKS.test(n) ? MAT.robotGrey : MAT.robot) : MAT.skin;
+        draws.push({ mesh: m.links[n], M: Mw, col: mt.col, mat: mt.mat });
+      });
+      /* taxels on every fingertip pad (response = Gaussian around the pad centre, gated by contact) */
+      var pts = [], dpts = [], glow = [], tx = m.extra.taxels;
+      m.extra.tips.forEach(function (tn, ti) {
+        var Mw = S.W[tn], T = tx[tn], c = Cs[ti];
+        var g = ti < NT ? gap(c) : 1, on = ti < NT && g < 0.003, pen = robot && g < -0.004;
+        var amp = on ? acts[ti] : 0;
+        for (var q = 0; q < T.p.length; q++) {
+          var lp = T.p[q], w = M4.xf(Mw, lp), dx = lp[0] - T.pad[0], dy = lp[1] - T.pad[1], dz = lp[2] - T.pad[2];
+          var v = amp * Math.exp(-(dx * dx + dy * dy + dz * dz) / (2 * 0.0055 * 0.0055));
+          var col = cmap(0.1 + 0.9 * v); if (pen) col = mix(col, C.red, 0.6 * v);
+          (amp > 0.02 ? pts : dpts).push(w[0], w[1], w[2], col[0] / 255, col[1] / 255, col[2] / 255, amp > 0.02 ? 0.35 + 0.65 * Math.min(1, v * 2 + 0.25) : 0.85, robot ? 0.0017 : 0.0016);
+          if (v > 0.3) glow.push(w[0], w[1], w[2], col[0] / 255 * 0.5, col[1] / 255 * 0.5, col[2] / 255 * 0.5, v, 0.0075);
+        }
+      });
+      var key = [-0.55, 1.0, 0.75];
+      var img = GL.r.render({ xray: true, occl: draws.slice(0, 4), w: p.w, h: p.h, dpr: Math.min(window.devicePixelRatio || 1, 2), VP: VP, proj5: proj[5], eye: eye, key: key, bulbPos: [0, BULB.gy, 0], draws: draws,
+        dpts: { data: new Float32Array(dpts), n: dpts.length / 8 }, pts: { data: new Float32Array(pts), n: pts.length / 8 }, glow: { data: new Float32Array(glow), n: glow.length / 8 } });
+      if (img) ctx.drawImage(img, p.x, p.y, p.w, p.h);
+      return Cs.slice(0, NT).map(function (c) { var q = toPx(c.p); return { x: q[0], y: q[1], c: c }; });
+    }
+    function overlay(p, nodes, Cs, robot, gh) {
+      if (!nodes) return;
+      if (robot && gh) {                                   // target (human) graph, ghosted
         ctx.setLineDash([2 * k, 4 * k]); ctx.lineWidth = 1 * k;
         edges.forEach(function (e) {
-          var a = Math.min(acts[e.u], acts[e.v]) * 0.3 * (1 - 0.7 * align); if (a < 0.02) return;
-          ctx.strokeStyle = 'rgba(236,229,217,' + a + ')'; ctx.beginPath(); ctx.moveTo(gh[e.u][0], gh[e.u][1]); ctx.lineTo(gh[e.v][0], gh[e.v][1]); ctx.stroke();
+          var a = Math.min(acts[e.u], acts[e.v]) * 0.32 * (1 - 0.7 * align); if (a < 0.02) return;
+          ctx.strokeStyle = 'rgba(236,229,217,' + a + ')'; ctx.beginPath(); ctx.moveTo(gh[e.u].x, gh[e.u].y); ctx.lineTo(gh[e.v].x, gh[e.v].y); ctx.stroke();
         });
         ctx.setLineDash([]);
       }
-      /* graph edges: draw themselves in, glow, colour = stretch vs. the human graph */
       edges.forEach(function (e) {
         var grow = ease(seg(tau, e.t0, e.t0 + 0.55)) * (1 - ease(seg(tau, 8.0, 8.5))); if (grow < 0.01) return;
         var A = nodes[e.u], B = nodes[e.v], bx = A.x + (B.x - A.x) * grow, by = A.y + (B.y - A.y) * grow, col = C.purple;
@@ -444,56 +460,60 @@
           var lh = V.len(V.sub(CH[e.u].p, CH[e.v].p)), lr = V.len(V.sub(Cs[e.u].p, Cs[e.v].p));
           col = mix(C.purple, C.red, clamp(Math.abs(lr - lh) / lh * 5, 0, 1));
         }
-        var g = ctx.createLinearGradient(A.x, A.y, bx, by);
-        g.addColorStop(0, rgba(mix(col, [255, 255, 255], 0.15), 1)); g.addColorStop(1, rgba(col, 1));
         ctx.lineCap = 'round';
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = rgba(col, e.cross ? 0.05 : 0.1); ctx.lineWidth = (e.cross ? 6 : 9) * k;
-        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.strokeStyle = rgba(col, 0.12); ctx.lineWidth = 8 * k; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(bx, by); ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = e.cross ? 0.75 : 1;
-        ctx.strokeStyle = g; ctx.lineWidth = (e.cross ? 1.2 : 2.2) * k;
-        if (e.cross) ctx.setLineDash([1.5 * k, 5 * k]);
-        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.strokeStyle = rgba(mix(col, [255, 255, 255], 0.1), 0.95); ctx.lineWidth = 2 * k;
+        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(bx, by); ctx.stroke();
       });
-      /* contact nodes */
       nodes.forEach(function (n, i) {
         var a = acts[i]; if (a < 0.02) return;
-        var bad = n.c.lost || n.c.pen, col = bad ? C.red : C.orange;
+        var g = gap(n.c), lost = robot && g > 0.003, pen = robot && g < -0.004, bad = lost || pen, col = bad ? C.red : C.orange;
         var pulse = 1 + 0.8 * Math.max(0, 1 - Math.abs(tau - (1.4 + 0.2 * i)) * 2.5);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.beginPath(); ctx.arc(n.x, n.y, 12 * k * pulse, 0, 7); ctx.fillStyle = rgba(col, 0.12 * a); ctx.fill();
+        ctx.beginPath(); ctx.arc(n.x, n.y, 12 * k * pulse, 0, 7); ctx.fillStyle = rgba(col, 0.13 * a); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
         ctx.lineWidth = 4 * k; ctx.strokeStyle = 'rgba(14,13,12,' + 0.5 * a + ')'; ctx.beginPath(); ctx.arc(n.x, n.y, 5.5 * k, 0, 7); ctx.stroke();
         ctx.beginPath(); ctx.arc(n.x, n.y, 5.5 * k, 0, 7);
-        if (n.c.lost) { ctx.fillStyle = 'rgba(14,13,12,.9)'; ctx.fill(); ctx.strokeStyle = rgba(col, a); ctx.lineWidth = 1.8 * k; ctx.stroke(); }
+        if (lost) { ctx.fillStyle = 'rgba(14,13,12,.9)'; ctx.fill(); ctx.strokeStyle = rgba(col, a); ctx.lineWidth = 1.8 * k; ctx.stroke(); }
         else { ctx.fillStyle = rgba(col, a); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,' + 0.55 * a + ')'; ctx.lineWidth = 1 * k; ctx.stroke(); }
-        if (robot && bad) {
+        if (bad) {
           var la = a * clamp(1 - align * 1.5, 0, 1);
           if (la > 0.02) {
-            ctx.save(); ctx.shadowColor = 'rgba(10,9,8,.95)'; ctx.shadowBlur = 6 * k;
-            ctx.font = (10.5 * k) + 'px ' + MONO; ctx.fillStyle = rgba(C.red, la);
-            var left = GC[i].h === 'L', txt = n.c.lost ? 'contact lost' : 'penetration', tw = ctx.measureText(txt).width;
-            var tx = left ? Math.max(p.x + 10 * k, n.x - 14 * k - tw) : Math.min(p.x + p.w - 10 * k - tw, n.x + 14 * k);
-            ctx.textAlign = 'left'; ctx.fillText(txt, tx, n.y - 11 * k);
-            ctx.restore(); ctx.textAlign = 'left';
+            ctx.font = (10.5 * k) + 'px ' + MONO;
+            var txt = lost ? 'contact lost' : 'penetration', tw = ctx.measureText(txt).width;
+            var left = n.x < p.x + p.w / 2, tx = clamp(left ? n.x - 16 * k - tw : n.x + 16 * k, p.x + 12 * k, p.x + p.w - 12 * k - tw), ty = n.y + 4 * k;
+            ctx.beginPath(); rr(ctx, tx - 6 * k, ty - 12 * k, tw + 12 * k, 17 * k, 8.5 * k);
+            ctx.fillStyle = 'rgba(16,14,13,' + 0.82 * la + ')'; ctx.fill(); ctx.strokeStyle = rgba(C.red, 0.45 * la); ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = rgba(C.red, la); ctx.textAlign = 'left'; ctx.fillText(txt, tx, ty);
           }
         }
       });
-      /* hand labels */
-      var la = Math.max.apply(null, acts) * 0.9;
-      if (la > 0.05 && !st) {
-        ctx.font = (10 * k) + 'px ' + MONO; ctx.fillStyle = rgba([236, 229, 217], 0.4 * la);
-        spacedC(ctx, 'LEFT HAND', cx - F * 0.95, cy + F * 1.02, 1.4 * k);
-        spacedC(ctx, 'RIGHT HAND', cx + F * 0.95, cy + F * 1.02, 1.4 * k);
-      }
     }
-    function spacedC(ctx, s, x, y, sp) { ctx.textAlign = 'left'; var w = 0; for (var i = 0; i < s.length; i++) w += ctx.measureText(s[i]).width + sp; spaced(ctx, s, x - w / 2, y, sp); }
 
-    title(ctx, pH, k, 'HUMAN', 'tactile-activated contact graph');
-    panel(pH, CH, false);
-    title(ctx, pR, k, 'ROBOT', 'different hand · same contact graph');
-    panel(pR, CR, true);
+    var nH = panel(pH, GL.human, sH, CH, false);
+    var nR = panel(pR, GL.robot, sR, CR, true);
+    var ghost = null;
+    if (ready) {       // human contact graph projected into the robot panel's camera (same world frame)
+      ghost = CH.slice(0, NT).map(function (c, i) { var o = nR[i]; return o; });
+      var M4 = HandGL.M4, asp = pR.w / pR.h, tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
+      var eye = [tgt[0] + dist * Math.cos(el) * Math.sin(az), tgt[1] + dist * Math.sin(el), tgt[2] + dist * Math.cos(el) * Math.cos(az)];
+      var VP = M4.mul(M4.persp(0.5, asp, 0.05, 2), M4.lookAt(eye, tgt, [0, 1, 0]));
+      ghost = CH.slice(0, NT).map(function (c) {
+        var w = c.p, x = VP[0] * w[0] + VP[4] * w[1] + VP[8] * w[2] + VP[12], y = VP[1] * w[0] + VP[5] * w[1] + VP[9] * w[2] + VP[13], ww = VP[3] * w[0] + VP[7] * w[1] + VP[11] * w[2] + VP[15];
+        return { x: pR.x + (x / ww + 1) / 2 * pR.w, y: pR.y + (1 - y / ww) / 2 * pR.h };
+      });
+    }
+    overlay(pH, nH, CH, false, null);
+    overlay(pR, nR, CR, true, ghost);
+
+    title(ctx, pH, k, 'HUMAN', 'MANO-style hand · tactile-activated contact graph');
+    title(ctx, pR, k, 'ROBOT', 'Wuji hand · same contact graph');
+    if (!ready) {
+      ctx.font = (11 * k) + 'px ' + MONO; ctx.fillStyle = C.faint; ctx.textAlign = 'center';
+      ctx.fillText(GL.failed ? 'WebGL unavailable' : 'loading hand models…', W / 2, H / 2); ctx.textAlign = 'left';
+    }
 
     var stLabel, stCol;
     if (tau < 1.4 || tau > 8.4) { stLabel = 'APPROACH'; stCol = [180, 172, 160]; }
@@ -502,17 +522,13 @@
     else { stLabel = 'GRAPH PRESERVED'; stCol = C.green; }
     pill(ctx, pR.x + pR.w - 18 * k, pR.y + 16 * k, k, stLabel, stCol, true);
     var anyA = Math.max.apply(null, acts);
-    lossBar(ctx, pR.x + pR.w / 2 + 6 * k, pR.y + pR.h - 26 * k, k, 'graph', anyA > 0.05 ? loss : 0, mix(C.purple, C.green, align));
+    lossBar(ctx, pR.x + pR.w / 2 + 6 * k, pR.y + pR.h - 26 * k, k, 'graph', anyA > 0.05 && ready ? loss : 0, mix(C.purple, C.green, align));
 
-    /* legend */
     var ly = pH.y + pH.h - 22 * k, lx = pH.x + 20 * k;
     ctx.font = (11 * k) + 'px ' + MONO; ctx.fillStyle = C.faint; ctx.textAlign = 'left';
     ctx.strokeStyle = rgba(C.purple, 1); ctx.lineWidth = 2.2 * k; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx, ly - 4 * k); ctx.lineTo(lx + 18 * k, ly - 4 * k); ctx.stroke();
-    ctx.fillText('intra-hand', lx + 24 * k, ly);
-    var x2 = lx + 24 * k + ctx.measureText('intra-hand').width + 16 * k;
-    ctx.lineWidth = 1.4 * k; ctx.setLineDash([1.5 * k, 4 * k]); ctx.beginPath(); ctx.moveTo(x2, ly - 4 * k); ctx.lineTo(x2 + 18 * k, ly - 4 * k); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillText('cross-hand', x2 + 24 * k, ly);
-    var x3 = x2 + 24 * k + ctx.measureText('cross-hand').width + 16 * k;
+    ctx.fillText('contact-graph edge', lx + 24 * k, ly);
+    var x3 = lx + 24 * k + ctx.measureText('contact-graph edge').width + 16 * k;
     ctx.beginPath(); ctx.arc(x3 + 5 * k, ly - 4 * k, 4.6 * k, 0, 7); ctx.fillStyle = rgba(C.orange, 1); ctx.fill();
     ctx.fillStyle = C.faint; ctx.fillText('contact', x3 + 16 * k, ly);
 
@@ -525,7 +541,7 @@
     var cv = { el: el, ctx: el.getContext('2d'), W: 0, H: 0, stacked: false };
     var scene = kind === 'graph' ? new GraphScene(cv) : new ContactScene(cv);
     var aspD = kind === 'graph' ? 2.1 : 2.3, aspM = kind === 'graph' ? 1.75 : 1.62;
-    var t = 0, last = null, raf = 0, vis = false;
+    var t = 0, last = null, raf = 0, vis = false, frozen = false;
     function resize() {
       var w = el.clientWidth; if (!w) return;
       cv.stacked = w < 620; cv.W = w; cv.H = Math.round(cv.stacked ? w * aspM : w / aspD);
@@ -535,7 +551,7 @@
       scene.draw(REDUCE ? scene.still : t);
     }
     function loop(now) {
-      if (last !== null) t += Math.min(0.05, (now - last) / 1000);
+      if (last !== null && !frozen) t += Math.min(0.05, (now - last) / 1000);
       last = now; scene.draw(t);
       if (vis) raf = requestAnimationFrame(loop); else { raf = 0; last = null; }
     }
@@ -546,7 +562,7 @@
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (es) { vis = es[0].isIntersecting; if (vis && !raf) raf = requestAnimationFrame(loop); }, { rootMargin: '80px' }).observe(el);
     } else { vis = true; raf = requestAnimationFrame(loop); }
-    el.__tr = { seek: function (s) { t = s; scene.draw(t); } };   // for screenshots / debugging
+    el.__tr = { seek: function (s) { t = s; frozen = true; scene.draw(t); } };   // for screenshots / debugging
   }
   function init() { Array.prototype.forEach.call(document.querySelectorAll('canvas[data-tr]'), mount); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
