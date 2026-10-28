@@ -329,7 +329,26 @@
   function shiftM(M, d) { var o = new Float32Array(M); o[12] += d[0]; o[13] += d[1]; o[14] += d[2]; return o; }
   function lerpM(A, B, t) { var o = new Float32Array(16); for (var i = 0; i < 16; i++) o[i] = A[i] + (B[i] - A[i]) * t; return o; }
 
-  function GraphScene(cv) { this.cv = cv; this.cycle = 9.4; this.still = 6.2; glInit(); }
+  /* drag-to-orbit: horizontal drag = azimuth, vertical drag = elevation (both panels stay in sync).
+     Auto-rotation pauses while dragging and resumes ~2 s after release, from the current angle. */
+  var ORBIT_RATE = 0.45 * 2 * Math.PI / 18;          // rad/s of the automatic orbit
+  function GraphScene(cv) {
+    this.cv = cv; this.cycle = 9.4; this.still = 6.2; glInit();
+    var o = this.orbit = { yaw: 0, pitch: 0, used: false, drag: false, release: -1e9, prevT: null, x: 0, y: 0, now: 0 };
+    var el = cv.el; el.style.cursor = 'grab'; el.style.touchAction = 'pan-y';
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return; o.drag = true; o.used = true; o.x = e.clientX; o.y = e.clientY; o.hint = 0;
+      try { el.setPointerCapture(e.pointerId); } catch (err) {} el.style.cursor = 'grabbing';
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!o.drag) return;
+      var dx = e.clientX - o.x, dy = e.clientY - o.y; o.x = e.clientX; o.y = e.clientY;
+      o.yaw -= dx * 0.009;
+      if (e.pointerType !== 'touch') o.pitch = clamp(o.pitch + dy * 0.006, -0.38, 0.75);
+    });
+    function up(e) { if (!o.drag) return; o.drag = false; o.release = o.now; el.style.cursor = 'grab'; try { el.releasePointerCapture(e.pointerId); } catch (err) {} }
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  }
   GraphScene.prototype.draw = function (t) {
     var cv = this.cv, ctx = cv.ctx, W = cv.W, H = cv.H, st = cv.stacked;
     if (!W) return;
@@ -393,10 +412,13 @@
       loss = clamp(L / LK, 0, 1) * 0.95 + 0.03;
     }
 
-    var yaw = t * 0.45 * 2 * Math.PI / 18;   // full 360° orbit at the previous peak angular speed (~40 s per turn)
+    var O = this.orbit, dt = O.prevT == null ? 0 : clamp(t - O.prevT, 0, 0.1); O.prevT = t; O.now = t;
+    if (!O.used) O.yaw = t * ORBIT_RATE;                       // untouched: same deterministic 360° orbit as before
+    else if (!O.drag) O.yaw += ORBIT_RATE * dt * ease(seg(t - O.release, 2.0, 2.8));   // resume ~2 s after release, easing in
+    var yaw = O.yaw, pitchOff = O.pitch;
     function panel(p, m, S, Cs, robot) {
       var M4 = HandGL.M4, asp = p.w / p.h;
-      var tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
+      var tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = clamp(CAM.el + pitchOff, 0.04, 1.35), az = CAM.az + yaw;
       var eye = [tgt[0] + dist * Math.cos(el) * Math.sin(az), tgt[1] + dist * Math.sin(el), tgt[2] + dist * Math.cos(el) * Math.cos(az)];
       var proj = M4.persp(0.5, asp, 0.05, 2), view = M4.lookAt(eye, tgt, [0, 1, 0]), VP = M4.mul(proj, view);
       function toPx(w) {
@@ -497,7 +519,7 @@
     var ghost = null;
     if (ready) {       // human contact graph projected into the robot panel's camera (same world frame)
       ghost = CH.slice(0, NT).map(function (c, i) { var o = nR[i]; return o; });
-      var M4 = HandGL.M4, asp = pR.w / pR.h, tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = CAM.el, az = CAM.az + yaw;
+      var M4 = HandGL.M4, asp = pR.w / pR.h, tgt = CAM.tgt, dist = st ? CAM.dm : CAM.d, el = clamp(CAM.el + pitchOff, 0.04, 1.35), az = CAM.az + yaw;
       var eye = [tgt[0] + dist * Math.cos(el) * Math.sin(az), tgt[1] + dist * Math.sin(el), tgt[2] + dist * Math.cos(el) * Math.cos(az)];
       var VP = M4.mul(M4.persp(0.5, asp, 0.05, 2), M4.lookAt(eye, tgt, [0, 1, 0]));
       ghost = CH.slice(0, NT).map(function (c) {
@@ -510,6 +532,13 @@
 
     title(ctx, pH, k, 'HUMAN', 'MANO hand · tactile-activated contact graph');
     title(ctx, pR, k, 'ROBOT', 'Wuji hand · same contact graph');
+    /* drag hint */
+    var ha = O.drag ? 0.25 : 0.55;
+    ctx.save(); ctx.font = (10.5 * k) + 'px ' + MONO; ctx.fillStyle = 'rgba(236,229,217,' + ha + ')';
+    var hint = '\u21bb drag to rotate', hw = ctx.measureText(hint).width;
+    if (!st) { ctx.textAlign = 'center'; ctx.fillText(hint, W / 2, H - 22 * k); }
+    else { ctx.textAlign = 'right'; ctx.fillText(hint, pH.x + pH.w - 18 * k, pH.y + 28 * k); }
+    ctx.restore();
     if (!ready) {
       ctx.font = (11 * k) + 'px ' + MONO; ctx.fillStyle = C.faint; ctx.textAlign = 'center';
       ctx.fillText(GL.failed ? 'WebGL unavailable' : 'loading hand models…', W / 2, H / 2); ctx.textAlign = 'left';
