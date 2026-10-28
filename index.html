@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- 字体：正文 Source Sans 3，标题 Newsreader（衬线），图注用等宽字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/css/style.css?v=45">
+  <link rel="stylesheet" href="static/css/style.css?v=46">
 </head>
 <body>
 
@@ -299,7 +299,7 @@
     <canvas data-tr="contact" role="img" aria-label="Animation: a contact patch on the human fingertip sensor is transferred to the robot fingertip; kinematic retargeting misplaces the patch and Tac-Retarget slides it back into alignment."></canvas>
   </figure>
 
-  <h4 class="mini"><span class="tr-dot g"></span>Contact-graph preservation</h4>
+  <h4 class="mini mini-env"><span class="tr-dot g"></span>Contact-graph preservation <span class="env env-drag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Interactive · drag to rotate</span></h4>
   <p class="brief">Tactile activation decides which fingertips are in contact, and these contacts form a graph whose edges link the simultaneously touching fingertips. Matching the graph's distance-weighted Laplacian coordinates keeps the contacts in the same spatial relation on the robot, and prevents the lost contacts and penetration that kinematics alone would cause.</p>
   <figure class="fig wide tr-viz">
     <canvas data-tr="graph" role="img" aria-label="Animation: a one-hand grasp of a light bulb forms a contact graph between the fingertips; the kinematic-only robot graph is distorted, and adding the contact-graph term restores it."></canvas>

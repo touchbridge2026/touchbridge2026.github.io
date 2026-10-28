@@ -786,3 +786,7 @@ figure.rv-fig { margin-top: 18px; margin-bottom: 34px; }
   .rv-method { font-size: 12.5px; }
   .rv-method span { font-size: 11px; }
 }
+
+/* "drag to rotate" badge next to the contact-graph heading */
+.env.env-drag { color: #17683f; background: #edf8f1; border: 1px solid #cfe6d8; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.env.env-drag svg { width: 14px; height: 14px; }
