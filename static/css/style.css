@@ -790,3 +790,6 @@ figure.rv-fig { margin-top: 18px; margin-bottom: 34px; }
 /* "drag to rotate" badge next to the contact-graph heading */
 .env.env-drag { color: #17683f; background: #edf8f1; border: 1px solid #cfe6d8; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .env.env-drag svg { width: 14px; height: 14px; }
+
+/* "coming soon" tag on link buttons that are not live yet */
+.btn.soon::after { content: "soon"; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--bg-soft); }
