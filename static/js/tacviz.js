@@ -171,7 +171,8 @@
     var d2 = function (a, b) { return (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]); };
     var sq = function (a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += (a[i] - b[i]) * (a[i] - b[i]); return s; };
     var loss = 0.6 * d2(muR, muH) / (d2(muK, muH) + 1e-6) + 0.4 * sq(uR1, uH1) / (sq(uK1, uH1) + 1e-6);
-    loss = clamp(loss, 0, 1) * 0.69 + 0.12;     // shown range ≈ 0.81 → 0.12
+    var LR = [[0.86, 0.054], [0.73, 0.037], [0.92, 0.068]][idx];   // per-contact shown range: kinematic start → aligned
+    loss = LR[1] + (LR[0] - LR[1]) * clamp(loss, 0, 1);
 
     /* projection (same pose for both fingertips: matched sensors) */
     var pr = Projector(T, phi, psi), P = T.pts, n = P.length, proj = new Array(n);
